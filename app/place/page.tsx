@@ -40,8 +40,8 @@ export default function PlacePage() {
     setSelectedCafe(cafe)
   }
 
-  // 임시로 서울시청 지역 ID 사용 (실제로는 사용자가 선택한 지역 ID를 사용해야 함)
-  const specificAddressId = "1100000000" // 서울특별시
+  // 사용자가 검색한 지역의 ID를 사용하거나, 기본값으로 null 사용
+  const [specificAddressId, setSpecificAddressId] = useState<string | null>(null)
 
   return (
     <div className="container mx-auto px-4 py-8 relative">
@@ -67,7 +67,7 @@ export default function PlacePage() {
           <PlaceMap 
             mapRef={mapRef} 
             onCafeSelect={handleCafeSelect}
-            specificAddressId={specificAddressId}
+            specificAddressId={specificAddressId || undefined}
           />
         </div>
         
