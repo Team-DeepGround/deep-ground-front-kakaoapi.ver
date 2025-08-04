@@ -14,22 +14,22 @@ export async function GET(request: NextRequest) {
     }
 
     // 실제 백엔드 API 호출
-    const backendUrl = `http://localhost:8080/api/v1/community-place/${specificAddressId}`
+    const backendUrl = `${process.env.BACKEND_API_URL || 'http://localhost:8080'}/api/v1/community-place/${encodeURIComponent(specificAddressId)}`;
     
-    const response = await fetch(backendUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        // Authorization 헤더는 클라이언트에서 전달받아야 함
-      },
-    })
+        const response = await fetch(backendUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+              // Authorization 헤더는 클라이언트에서 전달받아야 함
+        },
+      });
 
     if (!response.ok) {
-      const errorData = await response.json()
+      console.error('Backend API error:', await response.text());
       return NextResponse.json(
-        { error: "Backend API request failed", details: errorData },
+        { error: '카페 데이터를 가져올 수 없습니다' },
         { status: response.status }
-      )
+      );
     }
 
     const data = await response.json()
@@ -45,28 +45,28 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
+    const body = await request.json();
+
     // 새로운 카페 추가 로직 (실제 백엔드와 연동 필요)
     const newCafe = {
       id: Date.now(), // 임시 ID 생성
       ...body,
-      createdAt: new Date().toISOString()
-    }
+      createdAt: new Date().toISOString(),
+    };
 
     return NextResponse.json({
       success: true,
       data: newCafe,
-      message: '카페가 성공적으로 추가되었습니다.'
-    })
+      message: '카페가 성공적으로 추가되었습니다.',
+    });
   } catch (error) {
-    console.error('카페 추가 실패:', error)
+    console.error('카페 추가 실패:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: '카페 추가에 실패했습니다.' 
+      {
+        success: false,
+        error: '카페 추가에 실패했습니다.',
       },
       { status: 500 }
-    )
+    );
   }
 } 
