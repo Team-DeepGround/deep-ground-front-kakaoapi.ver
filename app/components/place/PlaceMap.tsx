@@ -6,6 +6,7 @@ import { useKakaoMap } from "@/hooks/useKakaoMap"
 interface PlaceMapProps {
   mapRef: React.RefObject<HTMLDivElement | null>
   onCafeSelect?: (cafe: any) => void
+  specificAddressId?: string // API에서 필요한 파라미터 추가
 }
 
 interface CafeData {
@@ -19,18 +20,20 @@ interface CafeData {
   description?: string
 }
 
-export function PlaceMap({ mapRef, onCafeSelect }: PlaceMapProps) {
+export function PlaceMap({ mapRef, onCafeSelect, specificAddressId }: PlaceMapProps) {
   const { mapInstance, isMapReady } = useKakaoMap(mapRef)
   const selectedMarkerRef = useRef<any>(null)
   const overlayRef = useRef<any>(null)
   const markerRefs = useRef<any[]>([])
   const overlayRefs = useRef<any[]>([])
 
-  // 1. 카페 데이터 상태로 관리 (mock 데이터는 useEffect에서 세팅)
+  // 1. 카페 데이터 상태로 관리
   const [cafeList, setCafeList] = useState<CafeData[]>([])
   const [visibleCafes, setVisibleCafes] = useState<CafeData[]>([])
   const [sortBy, setSortBy] = useState<'rating' | 'reviewCount'>('rating')
   const [selectedCafeName, setSelectedCafeName] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // 정렬된 리스트 (visibleCafes만)
   const sortedCafeList = [...visibleCafes].sort((a, b) => {
@@ -39,7 +42,60 @@ export function PlaceMap({ mapRef, onCafeSelect }: PlaceMapProps) {
     return 0
   })
 
-  // 별점 표시 함수 (복사)
+  // 카페 데이터를 가져오는 함수
+  const fetchCafeData = async () => {
+    if (!specificAddressId) {
+      console.log('specificAddressId가 없습니다:', specificAddressId)
+      return
+    }
+    
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      // 실제 백엔드 API 엔드포인트로 변경
+      const response = await fetch(`http://localhost:8080/api/v1/community-place/${specificAddressId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('카페 데이터를 가져오는데 실패했습니다.')
+      }
+
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || '카페 데이터를 가져오는데 실패했습니다.')
+      }
+
+      // API 응답 데이터를 CafeData 형식으로 변환
+      const cafes: CafeData[] = result.data.map((cafe: any) => ({
+        position: new window.kakao.maps.LatLng(cafe.latitude, cafe.longitude),
+        name: cafe.name,
+        rating: cafe.rating || 0,
+        reviewCount: cafe.reviewCount || 0,
+        address: cafe.address,
+        phone: cafe.phone,
+        hours: cafe.hours,
+        description: cafe.description
+      }))
+
+      setCafeList(cafes)
+    } catch (err) {
+      console.error('카페 데이터 로딩 실패:', err)
+      setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.')
+      // 에러 시 빈 배열로 설정
+      setCafeList([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // 별점 표시 함수
   const createStarRating = (rating: number) => {
     const fullStars = Math.floor(rating)
     const hasHalfStar = rating % 1 !== 0
@@ -47,7 +103,7 @@ export function PlaceMap({ mapRef, onCafeSelect }: PlaceMapProps) {
     return '★'.repeat(fullStars) + (hasHalfStar ? '☆' : '') + '☆'.repeat(emptyStars)
   }
 
-  // 커스텀 오버레이 생성 함수 (map 필요 없음)
+  // 커스텀 오버레이 생성 함수
   const createCustomOverlay = (cafe: CafeData) => {
     const content = `
       <div style="
@@ -134,11 +190,12 @@ export function PlaceMap({ mapRef, onCafeSelect }: PlaceMapProps) {
     })
   }
 
-  // 마커를 생성하고 지도 위에 표시하는 함수 (map을 파라미터로 받음)
+  // 마커를 생성하고 지도 위에 표시하는 함수
   const addMarker = (cafe: CafeData, map: any) => {
     // 커스텀 오버레이 생성
     const overlay = createCustomOverlay(cafe)
     overlay.setMap(null) // 초기에는 숨김
+    
     // CustomOverlay로 마커 생성
     const markerHTML = `
       <div style="
@@ -227,74 +284,27 @@ export function PlaceMap({ mapRef, onCafeSelect }: PlaceMapProps) {
 
     const map = mapInstance.current
 
-    // window.kakao가 준비된 후에 mock 데이터 생성
-    const mockData: CafeData[] = [
-      {
-        position: new window.kakao.maps.LatLng(37.5665, 126.9780),
-        name: "스타벅스 강남점",
-        rating: 4.5,
-        reviewCount: 128,
-        address: "서울 강남구 강남대로 123",
-        phone: "02-1234-5678",
-        hours: "월~금 07:00~22:00, 주말 08:00~21:00",
-        description: "강남역 근처에 위치한 편안한 카페입니다."
-      },
-      {
-        position: new window.kakao.maps.LatLng(37.5668, 126.9786),
-        name: "투썸플레이스 명동점",
-        rating: 4.2,
-        reviewCount: 95,
-        address: "서울 강남구 강남대로 456",
-        phone: "02-2345-6789",
-        hours: "월~금 08:00~23:00, 주말 09:00~22:00",
-        description: "명동에서 인기 있는 카페입니다."
-      },
-      {
-        position: new window.kakao.maps.LatLng(37.5671, 126.9792),
-        name: "할리스커피 종로점",
-        rating: 4.7,
-        reviewCount: 156,
-        address: "서울 강남구 강남대로 789",
-        phone: "02-3456-7890",
-        hours: "월~금 07:30~22:30, 주말 08:30~21:30",
-        description: "종로에서 가장 인기 있는 카페입니다."
-      },
-      {
-        position: new window.kakao.maps.LatLng(37.5674, 126.9798),
-        name: "이디야커피 광화문점",
-        rating: 4.0,
-        reviewCount: 78,
-        address: "서울 강남구 강남대로 101",
-        phone: "02-4567-8901",
-        hours: "월~금 08:00~21:00, 주말 09:00~20:00",
-        description: "광화문에서 편안하게 쉴 수 있는 카페입니다."
-      },
-      {
-        position: new window.kakao.maps.LatLng(37.5677, 126.9804),
-        name: "폴바셋 시청점",
-        rating: 4.3,
-        reviewCount: 112,
-        address: "서울 강남구 강남대로 202",
-        phone: "02-5678-9012",
-        hours: "월~금 07:00~23:00, 주말 08:00~22:00",
-        description: "시청 근처에서 인기 있는 카페입니다."
-      }
-    ]
-    setCafeList(mockData)
+    // API에서 카페 데이터 가져오기
+    if (specificAddressId) {
+      fetchCafeData()
+    }
 
     // bounds 내 카페만 visibleCafes로 관리
     const updateVisibleCafes = () => {
       const bounds = map.getBounds()
-      const filtered = mockData.filter((cafe) => {
+      const filtered = cafeList.filter((cafe) => {
         if (!cafe.position) return false
         return bounds.contain(cafe.position)
       })
       setVisibleCafes(filtered)
     }
-    updateVisibleCafes()
-    window.kakao.maps.event.addListener(map, 'idle', updateVisibleCafes)
 
-    console.log('카페 데이터:', mockData)
+    // 카페 데이터가 로드되면 visibleCafes 업데이트
+    if (cafeList.length > 0) {
+      updateVisibleCafes()
+    }
+
+    window.kakao.maps.event.addListener(map, 'idle', updateVisibleCafes)
 
     console.log('지도 생성 완료')
     console.log('지도 중심:', map.getCenter())
@@ -306,7 +316,7 @@ export function PlaceMap({ mapRef, onCafeSelect }: PlaceMapProps) {
       console.log('지도 타일 로드 완료')
     })
 
-    // 지도 클릭 이벤트 추가 (지도가 정상 작동하는지 확인)
+    // 지도 클릭 이벤트 추가
     window.kakao.maps.event.addListener(map, 'click', function(mouseEvent: any) {
       console.log('지도 클릭:', mouseEvent.latLng)
     })
@@ -316,18 +326,14 @@ export function PlaceMap({ mapRef, onCafeSelect }: PlaceMapProps) {
       console.log('마커 클릭:', cafeName)
       
       // 해당 카페 데이터 찾기
-      const cafe = mockData.find(c => c.name === cafeName)
+      const cafe = cafeList.find(c => c.name === cafeName)
       if (!cafe) return
-      
-      // 해당 마커 찾기 (모든 마커를 순회하면서 찾기)
-      const allMarkers = document.querySelectorAll('[onclick*="handleMarkerClick"]')
-      let targetMarker: any = null
       
       // 마커와 오버레이 매핑을 위한 임시 저장
       const markerOverlayMap = new Map()
       
       // 모든 마커에 대해 오버레이 생성 및 매핑
-      mockData.forEach((cafeData: CafeData, index: number) => {
+      cafeList.forEach((cafeData: CafeData, index: number) => {
         const overlay = createCustomOverlay(cafeData)
         overlay.setMap(null)
         markerOverlayMap.set(cafeData.name, overlay)
@@ -362,31 +368,6 @@ export function PlaceMap({ mapRef, onCafeSelect }: PlaceMapProps) {
       setSelectedCafeName(cafeName)
     }
 
-    // 모든 카페에 마커 추가
-    console.log('마커 추가 시작, 총', mockData.length, '개')
-    // 기존 마커 생성 코드에서 mockData.forEach -> updateVisibleCafes() 내에서 setVisibleCafes 후 visibleCafes.forEach로 마커 생성
-    // 아래 기존 마커 생성 코드는 참고용으로 남겨둠
-    /*
-    mockData.forEach((cafe: CafeData, index: number) => {
-      addMarker(cafe)
-    })
-    */
-    // 지도 중심에 테스트 마커 추가
-    const centerMarker = new window.kakao.maps.Marker({
-      map: map,
-      position: map.getCenter(),
-      title: '지도 중심 테스트 마커'
-    })
-    console.log('지도 중심 테스트 마커 추가 완료')
-
-    // 지도 로드 완료 후 마커 상태 확인
-    setTimeout(() => {
-      console.log('지도 로드 완료 후 상태 확인:')
-      console.log('지도 중심:', map.getCenter())
-      console.log('지도 줌 레벨:', map.getLevel())
-      console.log('지도 컨테이너 크기:', mapRef.current?.offsetWidth, 'x', mapRef.current?.offsetHeight)
-    }, 1000)
-
     // 지도 클릭 시 선택된 마커 초기화
     window.kakao.maps.event.addListener(map, 'click', function() {
       if (selectedMarkerRef.current) {
@@ -402,7 +383,20 @@ export function PlaceMap({ mapRef, onCafeSelect }: PlaceMapProps) {
       }
     })
 
-  }, [isMapReady, mapInstance, mapRef, onCafeSelect])
+  }, [isMapReady, mapInstance, mapRef, onCafeSelect, specificAddressId])
+
+  // cafeList가 변경될 때마다 visibleCafes 업데이트
+  useEffect(() => {
+    if (!isMapReady || !mapInstance.current) return
+    
+    const map = mapInstance.current
+    const bounds = map.getBounds()
+    const filtered = cafeList.filter((cafe) => {
+      if (!cafe.position) return false
+      return bounds.contain(cafe.position)
+    })
+    setVisibleCafes(filtered)
+  }, [cafeList, isMapReady, mapInstance])
 
   useEffect(() => {
     if (!isMapReady || !mapInstance.current || !window.kakao || !window.kakao.maps) return;
@@ -430,6 +424,42 @@ export function PlaceMap({ mapRef, onCafeSelect }: PlaceMapProps) {
     setSelectedCafeName(cafe.name)
   }
 
+  // 로딩 상태 표시
+  if (isLoading) {
+    return (
+      <div className="flex gap-4">
+        <div
+          ref={mapRef}
+          className="w-full h-[70vh] mt-16 rounded shadow border relative z-0 flex items-center justify-center"
+          style={{ minHeight: '400px', minWidth: '300px' }}
+        >
+          <div className="text-lg">카페 데이터를 불러오는 중...</div>
+        </div>
+        <div className="w-80 bg-white rounded shadow p-4 h-[70vh] overflow-y-auto mt-16 flex items-center justify-center">
+          <div className="text-lg">로딩 중...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // 에러 상태 표시
+  if (error) {
+    return (
+      <div className="flex gap-4">
+        <div
+          ref={mapRef}
+          className="w-full h-[70vh] mt-16 rounded shadow border relative z-0 flex items-center justify-center"
+          style={{ minHeight: '400px', minWidth: '300px' }}
+        >
+          <div className="text-lg text-red-500">지도를 불러올 수 없습니다.</div>
+        </div>
+        <div className="w-80 bg-white rounded shadow p-4 h-[70vh] overflow-y-auto mt-16 flex items-center justify-center">
+          <div className="text-lg text-red-500">{error}</div>
+        </div>
+      </div>
+    )
+  }
+
 return (
   <div className="flex gap-4">
     {/* 지도 */}
@@ -454,24 +484,30 @@ return (
           리뷰순
         </button>
       </div>
-      <ul>
-        {sortedCafeList.map((cafe) => (
-          <li
-            key={cafe.name}
-            className={`mb-4 p-2 rounded cursor-pointer border ${
-              selectedCafeName === cafe.name ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:bg-gray-50'
-            }`}
-            onClick={() => handleListCafeClick(cafe)}
-          >
-            <div className="font-bold text-lg">{cafe.name}</div>
-            <div className="flex items-center gap-2 text-sm">
-              <span>⭐ {cafe.rating}</span>
-              <span className="text-gray-400">/ 리뷰 {cafe.reviewCount}개</span>
-            </div>
-            <div className="text-xs text-gray-500">{cafe.address}</div>
-          </li>
-        ))}
-      </ul>
+      {sortedCafeList.length === 0 ? (
+        <div className="text-center text-gray-500 mt-8">
+          표시할 카페가 없습니다.
+        </div>
+      ) : (
+        <ul>
+          {sortedCafeList.map((cafe) => (
+            <li
+              key={cafe.name}
+              className={`mb-4 p-2 rounded cursor-pointer border ${
+                selectedCafeName === cafe.name ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:bg-gray-50'
+              }`}
+              onClick={() => handleListCafeClick(cafe)}
+            >
+              <div className="font-bold text-lg">{cafe.name}</div>
+              <div className="flex items-center gap-2 text-sm">
+                <span>⭐ {cafe.rating}</span>
+                <span className="text-gray-400">/ 리뷰 {cafe.reviewCount}개</span>
+              </div>
+              <div className="text-xs text-gray-500">{cafe.address}</div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   </div>
 )
