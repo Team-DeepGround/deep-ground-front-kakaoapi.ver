@@ -40,6 +40,9 @@ export default function PlacePage() {
     setSelectedCafe(cafe)
   }
 
+  // 임시로 서울시청 지역 ID 사용 (실제로는 사용자가 선택한 지역 ID를 사용해야 함)
+  const specificAddressId = "1100000000" // 서울특별시
+
   return (
     <div className="container mx-auto px-4 py-8 relative">
       <h1 className="text-3xl font-bold mb-4">모임장소</h1>
@@ -61,7 +64,11 @@ export default function PlacePage() {
             handleSuggestionClick={handleSuggestionClick}
             inputError={inputError}
           />
-          <PlaceMap mapRef={mapRef} onCafeSelect={handleCafeSelect} />
+          <PlaceMap 
+            mapRef={mapRef} 
+            onCafeSelect={handleCafeSelect}
+            specificAddressId={specificAddressId}
+          />
         </div>
         
         {/* 오른쪽: 상세 정보 패널 */}
