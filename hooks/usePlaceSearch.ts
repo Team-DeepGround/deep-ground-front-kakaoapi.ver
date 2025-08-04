@@ -11,6 +11,7 @@ declare global {
 export function usePlaceSearch(
   mapInstance: React.MutableRefObject<any>,
   isMapReady: boolean,
+  isMapLoading: boolean,
   setShowSuggestions?: (show: boolean) => void, // 인자 추가
   myLocation?: { lat: number; lng: number } | null // 내 위치 추가
 ) {
@@ -66,7 +67,7 @@ export function usePlaceSearch(
 
   // 자동완성: 장소명 부분만
   useEffect(() => {
-    if (!isMapReady) return
+    if (!isMapReady || isMapLoading) return
     const controller = new AbortController()
     const [locationPart] = searchInput.trim().split(/\s+/)
     if (!locationPart || locationPart.length < 2) {
@@ -96,7 +97,7 @@ export function usePlaceSearch(
       clearTimeout(timeout)
       controller.abort()
     }
-  }, [searchInput, isMapReady])
+  }, [searchInput, isMapReady, isMapLoading])
 
   // 지역명 판별 함수 (Kakao API 사용)
   async function checkIfRegionName(keyword: string): Promise<boolean> {

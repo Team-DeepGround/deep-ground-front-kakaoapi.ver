@@ -19,7 +19,7 @@ interface CafeInfo {
 export default function PlacePage() {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const [selectedCafe, setSelectedCafe] = useState<CafeInfo | null>(null)
-  const { mapInstance, isMapReady } = useKakaoMap(mapRef)
+  const { mapInstance, isMapReady, isLoading: isMapLoading } = useKakaoMap(mapRef)
   const {
     searchInput,
     setSearchInput,
@@ -34,7 +34,7 @@ export default function PlacePage() {
     setInputError,
     handleSuggestionClick,
     handleKeyDown,
-  } = usePlaceSearch(mapInstance, isMapReady)
+  } = usePlaceSearch(mapInstance, isMapReady, isMapLoading)
 
   const handleCafeSelect = (cafe: CafeInfo) => {
     setSelectedCafe(cafe)
@@ -53,6 +53,7 @@ export default function PlacePage() {
             searchInput={searchInput}
             setSearchInput={setSearchInput}
             isMapReady={isMapReady}
+            isMapLoading={isMapLoading}
             handleKeyDown={handleKeyDown}
             setIsComposing={setIsComposing}
             setShowSuggestions={setShowSuggestions}

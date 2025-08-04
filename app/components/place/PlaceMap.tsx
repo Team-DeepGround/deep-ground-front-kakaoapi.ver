@@ -21,7 +21,7 @@ interface CafeData {
 }
 
 export function PlaceMap({ mapRef, onCafeSelect, specificAddressId }: PlaceMapProps) {
-  const { mapInstance, isMapReady } = useKakaoMap(mapRef)
+  const { mapInstance, isMapReady, isLoading: isMapLoading } = useKakaoMap(mapRef)
   const selectedMarkerRef = useRef<any>(null)
   const overlayRef = useRef<any>(null)
   const markerRefs = useRef<any[]>([])

@@ -6,6 +6,7 @@ interface SearchInputProps {
   searchInput: string
   setSearchInput: (value: string) => void
   isMapReady: boolean
+  isMapLoading: boolean
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   setIsComposing: (isComposing: boolean) => void
   setShowSuggestions: (show: boolean) => void
@@ -23,6 +24,7 @@ export function SearchInput({
   searchInput,
   setSearchInput,
   isMapReady,
+  isMapLoading,
   handleKeyDown,
   setIsComposing,
   setShowSuggestions,
@@ -41,7 +43,9 @@ export function SearchInput({
           type="text"
           className="w-full rounded-xl bg-black/80 text-white placeholder-gray-300 border-none outline-none px-4 py-3 shadow-lg text-base font-semibold focus:ring-2 focus:ring-blue-500"
           placeholder={
-            isMapReady
+            isMapLoading
+              ? "지도를 불러오는 중입니다..."
+              : isMapReady
               ? "장소명 또는 '장소명 카테고리'를 입력하세요 (예: 강남역 카페)"
               : "지도를 불러오는 중입니다..."
           }
@@ -53,7 +57,7 @@ export function SearchInput({
             setInputError("")
           }}
           autoComplete="off"
-          disabled={!isMapReady}
+          disabled={isMapLoading || !isMapReady}
           onKeyDown={e => {
             handleKeyDown(e)
           }}

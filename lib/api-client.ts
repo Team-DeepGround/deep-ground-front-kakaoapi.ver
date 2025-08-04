@@ -15,7 +15,7 @@ interface RequestOptions extends RequestInit {
     params?: Record<string, string>;
 }
 
-async function apiClient(endpoint: string, options: RequestOptions = {}) {
+export async function apiClient(endpoint: string, options: RequestOptions = {}) {
     const { params, ...fetchOptions } = options;
 
     // Construct URL with query parameters
