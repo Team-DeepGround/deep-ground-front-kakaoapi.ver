@@ -61,7 +61,7 @@ export default function ReviewModal({ open, onOpenChange, schedule }: ReviewModa
       }
 
       const token = await auth.getToken();
-      const res = await fetch("http://localhost:3000/api/v1/communityplace", {
+      const res = await fetch("http://localhost:3000/api/v1/communityplace/reviews", {
         method: "POST",
         headers: {
           Authorization: token ? `Bearer ${token}` : "",

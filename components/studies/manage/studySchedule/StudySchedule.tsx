@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar, FileText, MapPin, Settings, Trash2 } from "lucide-react"
-import { createStudySchedule, fetchStudySchedulesByGroup, updateStudySchedule, deleteStudySchedule } from "@/lib/api/studySchedule"
+import { createStudySchedule, fetchStudySchedulesByGroup, updateStudySchedule, deleteStudySchedule, getPlaceDetails, PlaceInfo } from "@/lib/api/studySchedule"
 import { useParams } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
@@ -53,6 +53,7 @@ export function StudySchedule() {
     description: "",
     lat: "",
     lng: "",
+    place: null as PlaceInfo | null,
   })
 
   // 수정용 상태
@@ -153,6 +154,7 @@ export function StudySchedule() {
         location: newSchedule.location,
         latitude: newSchedule.lat ? Number(newSchedule.lat) : undefined,
         longitude: newSchedule.lng ? Number(newSchedule.lng) : undefined,
+        place: newSchedule.place || undefined,
       })
       const fetched = await fetchStudySchedulesByGroup(studyGroupId)
 
@@ -179,6 +181,7 @@ export function StudySchedule() {
         description: "",
         lat: "",
         lng: "",
+        place: null,
       })
       setIsAddModalOpen(false)
       window.location.reload(); // 새로고침
@@ -501,13 +504,23 @@ export function StudySchedule() {
         <PlaceSelectModal
           open={showPlaceModal}
           onClose={() => setShowPlaceModal(false)}
-          onSelect={(place) => {
+          onSelect={async (place) => {
+            // 카카오 API를 사용해서 장소 상세 정보 가져오기
+            const placeDetails = await getPlaceDetails(place.name)
+            
             setNewSchedule((prev) => ({
               ...prev,
               location: place.address || place.name,
               lat: String(place.lat),
               lng: String(place.lng),
+              place: placeDetails || {
+                name: place.name,
+                address: place.address,
+                latitude: place.lat,
+                longitude: place.lng,
+              },
             }))
+            setShowPlaceModal(false)
           }}
         />
       )}
