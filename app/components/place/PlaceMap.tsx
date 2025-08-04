@@ -54,22 +54,38 @@ export function PlaceMap({ mapRef, onCafeSelect, specificAddressId }: PlaceMapPr
     
     try {
       // 실제 백엔드 API 엔드포인트로 변경
-      const response = await fetch(`http://localhost:8080/api/v1/community-place/${specificAddressId}`, {
+      const apiUrl = `http://localhost:8080/api/v1/community-place/${specificAddressId}`
+      console.log('API 호출 URL:', apiUrl)
+      
+      const token = localStorage.getItem('auth_token')
+      console.log('토큰 존재 여부:', !!token)
+      
+      const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
       })
 
+      console.log('API 응답 상태:', response.status, response.statusText)
+
       if (!response.ok) {
-        throw new Error('카페 데이터를 가져오는데 실패했습니다.')
+        const errorText = await response.text()
+        console.warn('카페 데이터 API 호출 실패:', response.status, response.statusText, errorText)
+        // API 실패해도 지도는 정상 표시되도록 빈 배열로 설정
+        setCafeList([])
+        return
       }
 
       const result = await response.json()
+      console.log('API 응답 데이터:', result)
       
       if (!result.success) {
-        throw new Error(result.error || '카페 데이터를 가져오는데 실패했습니다.')
+        console.warn('카페 데이터 API 응답 실패:', result.error)
+        // API 실패해도 지도는 정상 표시되도록 빈 배열로 설정
+        setCafeList([])
+        return
       }
 
       // API 응답 데이터를 CafeData 형식으로 변환
@@ -87,8 +103,7 @@ export function PlaceMap({ mapRef, onCafeSelect, specificAddressId }: PlaceMapPr
       setCafeList(cafes)
     } catch (err) {
       console.error('카페 데이터 로딩 실패:', err)
-      setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.')
-      // 에러 시 빈 배열로 설정
+      // 에러 시에도 지도는 정상 표시되도록 빈 배열로 설정
       setCafeList([])
     } finally {
       setIsLoading(false)
@@ -424,37 +439,19 @@ export function PlaceMap({ mapRef, onCafeSelect, specificAddressId }: PlaceMapPr
     setSelectedCafeName(cafe.name)
   }
 
-  // 로딩 상태 표시
+  // 로딩 상태 표시 (지도는 정상 표시하고 사이드바만 로딩 표시)
   if (isLoading) {
     return (
       <div className="flex gap-4">
+        {/* 지도는 정상 표시 */}
         <div
           ref={mapRef}
-          className="w-full h-[70vh] mt-16 rounded shadow border relative z-0 flex items-center justify-center"
+          className="w-full h-[70vh] mt-16 rounded shadow border relative z-0"
           style={{ minHeight: '400px', minWidth: '300px' }}
-        >
+        />
+        {/* 사이드바만 로딩 표시 */}
+        <div className="w-80 bg-white rounded shadow p-4 h-[70vh] overflow-y-auto mt-16 flex items-center justify-center">
           <div className="text-lg">카페 데이터를 불러오는 중...</div>
-        </div>
-        <div className="w-80 bg-white rounded shadow p-4 h-[70vh] overflow-y-auto mt-16 flex items-center justify-center">
-          <div className="text-lg">로딩 중...</div>
-        </div>
-      </div>
-    )
-  }
-
-  // 에러 상태 표시
-  if (error) {
-    return (
-      <div className="flex gap-4">
-        <div
-          ref={mapRef}
-          className="w-full h-[70vh] mt-16 rounded shadow border relative z-0 flex items-center justify-center"
-          style={{ minHeight: '400px', minWidth: '300px' }}
-        >
-          <div className="text-lg text-red-500">지도를 불러올 수 없습니다.</div>
-        </div>
-        <div className="w-80 bg-white rounded shadow p-4 h-[70vh] overflow-y-auto mt-16 flex items-center justify-center">
-          <div className="text-lg text-red-500">{error}</div>
         </div>
       </div>
     )
@@ -484,7 +481,12 @@ return (
           리뷰순
         </button>
       </div>
-      {sortedCafeList.length === 0 ? (
+      {error ? (
+        <div className="text-center text-red-500 mt-8">
+          <div className="text-lg mb-2">카페 데이터 로딩 실패</div>
+          <div className="text-sm">{error}</div>
+        </div>
+      ) : sortedCafeList.length === 0 ? (
         <div className="text-center text-gray-500 mt-8">
           표시할 카페가 없습니다.
         </div>
