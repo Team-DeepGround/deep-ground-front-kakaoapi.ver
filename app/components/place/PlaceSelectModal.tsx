@@ -2,7 +2,6 @@
 
 import React, { useRef, useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { PlaceMap } from "./PlaceMap"
 import { SearchInput } from "./SearchInput"
 import { useKakaoMap } from "@/hooks/useKakaoMap"
 import { usePlaceSearch } from "@/hooks/usePlaceSearch"
@@ -16,9 +15,9 @@ interface PlaceSelectModalProps {
 
 export default function PlaceSelectModal({ open, onClose, onSelect }: PlaceSelectModalProps) {
   const mapRef = useRef<HTMLDivElement | null>(null)
-  const { mapInstance, isMapReady, myLocation } = useKakaoMap(mapRef)
+  const { mapInstance, isMapReady, isLoading: isMapLoading } = useKakaoMap(mapRef)
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const usePlaceSearchResult = usePlaceSearch(mapInstance, isMapReady, setShowSuggestions, myLocation)
+  const usePlaceSearchResult = usePlaceSearch(mapInstance, isMapReady, isMapLoading, setShowSuggestions, null)
   const {
     searchInput,
     setSearchInput,
@@ -106,16 +105,22 @@ export default function PlaceSelectModal({ open, onClose, onSelect }: PlaceSelec
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>장소 검색 및 선택</DialogTitle>
         </DialogHeader>
-        <div className="relative w-full h-[60vh]">
-          <PlaceMap mapRef={mapRef} />
+        <div className="relative w-full h-[70vh]">
+          {/* 단순한 카카오 지도 */}
+          <div
+            ref={mapRef}
+            className="w-full h-full rounded-lg shadow-lg border"
+            style={{ minHeight: '400px' }}
+          />
           <SearchInput
             searchInput={searchInput}
             setSearchInput={setSearchInput}
             isMapReady={isMapReady}
+            isMapLoading={isMapLoading}
             handleKeyDown={handleKeyDown}
             setIsComposing={setIsComposing}
             setShowSuggestions={setShowSuggestions}
