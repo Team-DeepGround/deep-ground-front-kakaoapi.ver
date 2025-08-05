@@ -20,6 +20,8 @@ RUN npm run build
 FROM node:18-alpine AS runner
 WORKDIR /app
 
+RUN npm install -g pnpm
+
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/package.json ./package.json
