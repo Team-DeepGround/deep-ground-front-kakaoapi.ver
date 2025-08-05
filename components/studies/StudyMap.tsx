@@ -33,12 +33,14 @@ export function StudyMap({ onClose }: StudyMapProps) {
     handleSearch,
     handleSuggestionClick,
     handleKeyDown,
-    updateStudyMarkers
+    updateStudyMarkers,
+    testUpdateMarkers
   } = useStudyMap(mapInstance, isMapReady)
 
   // 지도가 준비되면 현재 위치로 이동
   useEffect(() => {
     if (isMapReady) {
+      console.log('🗺️ 지도 준비 완료, 초기화 시작')
       getCurrentLocation()
     }
   }, [isMapReady, getCurrentLocation])
@@ -121,6 +123,27 @@ export function StudyMap({ onClose }: StudyMapProps) {
               >
                 <MapPin className="h-4 w-4 mr-2" />
                 현재 위치
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  console.log('🔘 수동 마커 업데이트 버튼 클릭')
+                  updateStudyMarkers()
+                }}
+                disabled={isLoading}
+              >
+                <Loader2 className="h-4 w-4 mr-2" />
+                마커 새로고침
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  console.log('🧪 테스트 버튼 클릭')
+                  testUpdateMarkers()
+                }}
+                disabled={isLoading}
+              >
+                🧪 테스트
               </Button>
             </div>
             {inputError && (
