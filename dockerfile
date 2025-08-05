@@ -1,15 +1,19 @@
+# 빌드 단계
 FROM node:18 AS build
 WORKDIR /app
 
 ENV NODE_ENV=production
 
 COPY package.json package-lock.json* ./
+COPY tsconfig.json ./tsconfig.json
+COPY .env.local .env.local
 RUN npm install
 
 COPY . .
-COPY .env.local .env.local
+
 RUN npm run build
 
+# 실행 단계
 FROM node:18-alpine AS runner
 WORKDIR /app
 
