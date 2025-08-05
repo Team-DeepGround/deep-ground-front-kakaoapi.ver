@@ -27,6 +27,16 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  // 배포 환경에서 Html 에러 방지
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+      };
+    }
+    return config;
+  },
   // 임시 설정: 서버에서 직접 CORS 처리해야 함
   async rewrites() {
     return [

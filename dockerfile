@@ -2,7 +2,7 @@
 FROM node:18 AS build
 WORKDIR /app
 
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 COPY package.json package-lock.json* ./
 RUN npm install
 
