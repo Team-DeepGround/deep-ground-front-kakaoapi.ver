@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { api } from "@/lib/api-client"
 import { toast } from "sonner"
 
-export default function OAuth2RedirectPage() {
+function OAuth2RedirectContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { login } = useAuth()
@@ -53,5 +53,17 @@ export default function OAuth2RedirectPage() {
     <div className="min-h-screen flex items-center justify-center">
       <span>로그인 처리 중...</span>
     </div>
+  )
+}
+
+export default function OAuth2RedirectPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <span>로딩 중...</span>
+      </div>
+    }>
+      <OAuth2RedirectContent />
+    </Suspense>
   )
 }
