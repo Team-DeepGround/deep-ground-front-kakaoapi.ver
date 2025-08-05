@@ -1,3 +1,5 @@
+import path from 'path'
+
 let userConfig = undefined
 try {
   // try to import ESM first
@@ -35,8 +37,15 @@ const nextConfig = {
         fs: false,
       };
     }
+
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@': path.resolve(__dirname),
+    };
+
     return config;
   },
+
   // 임시 설정: 서버에서 직접 CORS 처리해야 함
   async rewrites() {
     return [
