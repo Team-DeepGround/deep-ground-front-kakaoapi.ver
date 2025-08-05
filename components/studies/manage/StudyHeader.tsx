@@ -9,6 +9,10 @@ interface StudyHeaderProps {
 }
 
 export function StudyHeader({ study }: StudyHeaderProps) {
+  const locationText = study.offline && study.addresses?.length
+    ? `${study.addresses[0].city} ${study.addresses[0].gu} ${study.addresses[0].dong}`
+    : "온라인"
+
   return (
     <div className="mb-8 w-full">
       <div className="flex justify-between items-start">
@@ -63,9 +67,9 @@ export function StudyHeader({ study }: StudyHeaderProps) {
         </div>
         <div className="flex items-center gap-2">
           <MapPin className="h-5 w-5 text-muted-foreground" />
-          <span>{study.offline ? study.location : "온라인"}</span>
+          <span>{locationText}</span>
         </div>
       </div>
     </div>
   )
-} 
+}
