@@ -6,6 +6,8 @@ import { getStudyGroupAggregation } from "@/lib/api/studySchedule"
 declare global {
   interface Window {
     kakao: any
+    onStudyMapMarkerClick?: (marker: { city: string; gu: string; dong: string }) => void
+    studyMapMarkerClickHandlers?: { [key: string]: () => void }
   }
 }
 
@@ -238,7 +240,22 @@ export function useStudyMap(mapInstance: React.MutableRefObject<any>, isMapReady
   }, [getCoordinatesFromAddress])
 
   // 커스텀 마커 생성
-  const createCustomMarker = useCallback((position: any, groupData: StudyGroupAggregation) => {
+const createCustomMarker = useCallback((position: any, groupData: StudyGroupAggregation) => {
+  const markerId = `marker-${groupData.address.city}-${groupData.address.gu}-${groupData.address.dong}`
+
+    // window에 핸들러 등록
+    if (!window.studyMapMarkerClickHandlers) window.studyMapMarkerClickHandlers = {}
+    window.studyMapMarkerClickHandlers[markerId] = () => {
+      console.log('✅ 마커 핸들러 실행:', markerId)
+      if (window.onStudyMapMarkerClick) {
+        window.onStudyMapMarkerClick({
+          city: groupData.address.city,
+          gu: groupData.address.gu,
+          dong: groupData.address.dong,
+        })
+      }
+    }
+    
     const markerContent = `
       <div style="
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -254,8 +271,11 @@ export function useStudyMap(mapInstance: React.MutableRefObject<any>, isMapReady
         box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         border: 3px solid white;
         cursor: pointer;
-        transition: transform 0.2s;
-      " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+        transition: transform 0.2s;"
+        onclick="window.studyMapMarkerClickHandlers['${markerId}']()"
+        onmouseover="this.style.transform='scale(1.1)'"
+        onmouseout="this.style.transform='scale(1)'"
+      >
         <div style="text-align: center;">
           <div style="font-size: 16px; line-height: 1;">${groupData.count}</div>
           <div style="font-size: 10px; line-height: 1; opacity: 0.9;">개</div>
