@@ -31,6 +31,7 @@ interface Schedule {
   attendance?: "attending" | "not_attending" | null
   isImportant?: boolean
   personalNote?: string
+  placeId?: number // Long 값으로 수정
 }
 
 export function StudySchedule() {
@@ -94,6 +95,7 @@ export function StudySchedule() {
             isImportant: item.isImportant ?? false,
             lat: item.latitude, // 추가
             lng: item.longitude, // 추가
+            placeId: item.place?.id || null, // place 객체에서 id 추출, 없으면 null
           }
         }).sort((a, b) => a.startTime.getTime() - b.startTime.getTime()) 
   

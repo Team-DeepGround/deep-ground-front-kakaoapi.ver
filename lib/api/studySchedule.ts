@@ -161,13 +161,9 @@ export function convertToSchedule(dto: StudyScheduleResponseDto): Schedule {
 
 // 스터디 그룹 집계 조회 API
 export const getStudyGroupAggregation = async (city: string, gu: string) => {
-  console.log('🔗 API 호출 시작:', `/api/v1/study-group/calculate?city=${city}&gu=${gu}`)
-  
-  const response = await api.get('/study-group/calculate', {
+  const response = await api.get('/study-group/aggregation', {
     params: { city, gu }
   });
-  
-  console.log('🔗 API 응답:', response);
   return response;
 };
 
