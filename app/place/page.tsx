@@ -14,6 +14,7 @@ interface CafeInfo {
   phone?: string
   hours?: string
   description?: string
+  placeUrl?: string
 }
 
 export default function PlacePage() {
@@ -40,8 +41,7 @@ export default function PlacePage() {
     setSelectedCafe(cafe)
   }
 
-  // 사용자가 검색한 지역의 ID를 사용하거나, 기본값으로 null 사용
-  const [specificAddressId, setSpecificAddressId] = useState<string | null>(null)
+  // 별점순으로 모임장소 조회 (API에서 자동으로 처리됨)
 
   return (
     <div className="container mx-auto px-4 py-8 relative">
@@ -65,12 +65,29 @@ export default function PlacePage() {
             handleSuggestionClick={handleSuggestionClick}
             inputError={inputError}
           />
-          <PlaceMap 
-            mapRef={mapRef} 
-            onCafeSelect={handleCafeSelect}
-            specificAddressId={specificAddressId || undefined}
-          />
+          {/* 지도 컨테이너 */}
+          <div className="w-full h-[70vh] mt-16 rounded shadow border relative">
+            <div
+              ref={mapRef}
+              id="kakao-map-container"
+              className="w-full h-full"
+              style={{ 
+                minHeight: '400px', 
+                minWidth: '300px',
+                zIndex: 1,
+                position: 'relative',
+                overflow: 'visible'
+              }}
+            />
+          </div>
         </div>
+        
+        {/* 오른쪽: 카페 리스트 사이드바 */}
+        <PlaceMap 
+          mapRef={mapRef} 
+          mapInstance={mapInstance}
+          onCafeSelect={handleCafeSelect}
+        />
         
         {/* 오른쪽: 상세 정보 패널 */}
         <div className="w-80 bg-white rounded-lg shadow-lg p-6 h-[70vh] overflow-y-auto">
@@ -111,7 +128,16 @@ export default function PlacePage() {
                   </div>
                 </div>
                 <div className="flex space-x-2 pt-4">
-                  <button className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600 transition-colors">
+                  <button 
+                    className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600 transition-colors"
+                    onClick={() => {
+                      if (selectedCafe.placeUrl) {
+                        window.open(selectedCafe.placeUrl, '_blank')
+                      } else {
+                        alert('해당 매장의 상세 정보가 없습니다.')
+                      }
+                    }}
+                  >
                     상세보기
                   </button>
                   <button className="bg-yellow-400 text-gray-800 px-4 py-2 rounded text-sm font-semibold hover:bg-yellow-500 transition-colors">
