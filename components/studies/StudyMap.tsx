@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useEffect, useState } from "react"
+import React, { useRef, useEffect, useState, useCallback } from "react"
 import { useKakaoMap } from "@/hooks/useKakaoMap"
 import { useStudyMap } from "@/hooks/useStudyMap"
 import { Button } from "@/components/ui/button"
@@ -39,13 +39,19 @@ export function StudyMap({ onClose }: StudyMapProps) {
     testUpdateMarkers
   } = useStudyMap(mapInstance, isMapReady)
 
+  interface MarkerLocation {
+    city: string
+    gu: string
+    dong: string
+  }
+
   // 마커 클릭 시 리스트 상태 추가
   const [selectedMarker, setSelectedMarker] = useState<any>(null)
   const [markerStudies, setMarkerStudies] = useState<any[]>([])
   const [isListLoading, setIsListLoading] = useState(false)
 
   // 마커 클릭 핸들러
-  const handleMarkerClick = async (marker: any) => {
+  const handleMarkerClick = useCallback(async (marker: MarkerLocation) => {
     console.log('마커 클릭:', marker); // 추가
     setSelectedMarker(marker)
     setIsListLoading(true)
@@ -60,11 +66,12 @@ export function StudyMap({ onClose }: StudyMapProps) {
       })
       setMarkerStudies(res.result.studyGroups)
     } catch (e) {
+      console.error('스터디 그룹 목록 조회 실패:', e)
       setMarkerStudies([])
     } finally {
       setIsListLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     window.onStudyMapMarkerClick = handleMarkerClick
@@ -249,8 +256,13 @@ export function StudyMap({ onClose }: StudyMapProps) {
           </div>
         </div>
         {/* 우측: 마커 관련 리스트 */}
-        <div className="p-4">
+        <div className="w-96 p-4 overflow-y-auto">
           <h3 className="font-bold text-lg mb-2">이 지역 스터디 그룹</h3>
+          {selectedMarker && (
+            <p className="text-sm text-gray-600 mb-3">
+              {selectedMarker.city} {selectedMarker.gu} {selectedMarker.dong}
+            </p>
+          )}
           {isListLoading ? (
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
