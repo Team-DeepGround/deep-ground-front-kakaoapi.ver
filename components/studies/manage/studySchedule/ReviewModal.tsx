@@ -49,6 +49,20 @@ export default function ReviewModal({ open, onOpenChange, schedule }: ReviewModa
       const safeLng = schedule.lng !== undefined && schedule.lng !== null && schedule.lng !== "" ? String(schedule.lng) : "0";
       formData.append("address.latitude", safeLat);
       formData.append("address.longitude", safeLng);
+      
+      // placeId가 있으면 specificAddressId로 전송 (Long 타입이므로 문자열로 변환)
+      if (schedule.placeId) {
+        formData.append("specificAddressId", schedule.placeId.toString());
+      } else {
+        // placeId가 없으면 에러 처리
+        toast({
+          title: "오류",
+          description: "장소 정보가 없어 리뷰를 등록할 수 없습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       images.forEach((file, idx) => {
         formData.append("images", file);
       });
@@ -56,19 +70,33 @@ export default function ReviewModal({ open, onOpenChange, schedule }: ReviewModa
       // 디버깅용 콘솔 로그 추가
       console.log("lat:", schedule.lat);
       console.log("lng:", schedule.lng);
+      console.log("placeId:", schedule.placeId);
+      console.log("FormData 내용:");
       for (let pair of formData.entries()) {
         console.log(pair[0] + ": " + pair[1]);
       }
 
       const token = await auth.getToken();
-      const res = await fetch("http://localhost:3000/api/v1/communityplace/reviews", {
+      
+      // 토큰 확인
+      if (!token) {
+        toast({
+          title: "로그인이 필요합니다",
+          description: "리뷰를 등록하려면 로그인해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const res = await fetch("http://localhost:3000/api/v1/communityPlace/reviews", {
         method: "POST",
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       });
       const response = await res.json();
+      
       if (res.ok || response.status === 201) {
         toast({
           title: "성공",
@@ -76,9 +104,10 @@ export default function ReviewModal({ open, onOpenChange, schedule }: ReviewModa
         });
         onOpenChange(false);
       } else {
+        console.log("리뷰 등록 실패 응답:", response);
         toast({
           title: "리뷰 등록 실패",
-          description: response.message || "알 수 없는 오류가 발생했습니다.",
+          description: response.message || response.error || "알 수 없는 오류가 발생했습니다.",
           variant: "destructive",
         });
       }
