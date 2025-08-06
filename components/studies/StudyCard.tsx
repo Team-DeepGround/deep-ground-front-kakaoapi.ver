@@ -1,5 +1,5 @@
 import { useRouter } from "next/navigation"
-import { useCallback, memo } from "react"
+import { useCallback, memo, useEffect } from "react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -19,7 +19,11 @@ export interface StudyGroup {
     avatar: string;
   };
   isOnline: boolean;
-  location: string;
+  addresses: {
+    city: string
+    gu: string
+    dong: string
+  }[];
 }
 
 interface StudyCardProps {
@@ -32,6 +36,11 @@ export const StudyCard = memo(function StudyCard({ study }: StudyCardProps) {
   const handleClick = useCallback(() => {
     router.push(`/studies/${study.id}`)
   }, [study.id])
+
+  useEffect(() => {
+    console.log("📍 study.tags", study.tags)
+    console.log("📍 study.addresses", study.addresses)
+  }, [study])
   
   return (
     <Card 
@@ -52,22 +61,26 @@ export const StudyCard = memo(function StudyCard({ study }: StudyCardProps) {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <p className="text-sm text-muted-foreground line-clamp-2 h-10">{study.description}</p>
-        {study.location && (
-          <p className="text-sm text-muted-foreground mt-2 flex items-center">
-            <MapPin className="h-3.5 w-3.5 mr-1 flex-shrink-0 group-hover:text-primary transition-colors" />
-            <span className="truncate">{study.location}</span>
-          </p>
-        )}
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {study.tags?.map((tag) => (
-            <Badge key={tag.id + '-' + tag.name} variant="secondary" className="font-normal">
-              {tag.name}
-            </Badge>
-          ))}
-        </div>
-      </CardContent>
+        <CardContent className="p-4 pt-0">
+          <p className="text-sm text-muted-foreground line-clamp-2 h-10">{study.description}</p>
+          
+          {!study.isOnline && study.addresses?.[0]?.dong && (
+            <p className="text-sm text-muted-foreground mt-2 flex items-center">
+              <MapPin className="h-3.5 w-3.5 mr-1 flex-shrink-0 group-hover:text-primary transition-colors" />
+              <span className="truncate">{study.addresses[0].dong}</span>
+            </p>
+          )}
+
+
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {study.tags?.map((tag) => (
+              <Badge key={tag.id + '-' + tag.name} variant="secondary" className="font-normal">
+                {tag.name}
+              </Badge>
+            ))}
+          </div>
+        </CardContent>
+
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Avatar className="h-6 w-6">
