@@ -1,26 +1,29 @@
 "use client"
 
 import React, { useRef, useState } from "react"
-import { useKakaoMap } from "@/hooks/useKakaoMap"
-import { usePlaceSearch } from "@/hooks/usePlaceSearch"
-import { SearchInput } from "@/app/components/place/SearchInput"
-import { PlaceMap } from "@/app/components/place/PlaceMap"
+import { usePlaceMap } from "@/hooks/useKakaoMap"
+import { usePlacePageSearch } from "@/hooks/usePlaceSearch"
+import { PlacePageSearchInput } from "@/app/components/place/SearchInput"
+import { PlaceMap, PlaceMapRef } from "@/app/components/place/PlaceMap"
 
 interface CafeInfo {
+  id: number
   name: string
   rating: number
   reviewCount: number
-  address: string
+  address?: string
   phone?: string
   hours?: string
   description?: string
   placeUrl?: string
+  placeId?: string
+  position?: any // kakao.maps.LatLng
 }
 
 export default function PlacePage() {
   const mapRef = useRef<HTMLDivElement | null>(null)
-  const [selectedCafe, setSelectedCafe] = useState<CafeInfo | null>(null)
-  const { mapInstance, isMapReady, isLoading: isMapLoading } = useKakaoMap(mapRef)
+  const placeMapRef = useRef<PlaceMapRef>(null)
+  const { mapInstance, isMapReady, isLoading: isMapLoading, selectedCafe, selectCafe, searchNearbyPlaces } = usePlaceMap(mapRef)
   const {
     searchInput,
     setSearchInput,
@@ -35,10 +38,31 @@ export default function PlacePage() {
     setInputError,
     handleSuggestionClick,
     handleKeyDown,
-  } = usePlaceSearch(mapInstance, isMapReady, isMapLoading)
+  } = usePlacePageSearch(mapInstance, isMapReady, isMapLoading)
 
   const handleCafeSelect = (cafe: CafeInfo) => {
-    setSelectedCafe(cafe)
+    console.log('🔍 handleCafeSelect 호출됨:', cafe)
+    console.log('🔍 cafe.placeId:', cafe.placeId)
+    selectCafe(cafe)
+  }
+
+  const handleReviewClick = () => {
+    if (selectedCafe && placeMapRef.current) {
+      // CafeInfo를 CafeData 형태로 변환
+      const cafeData = {
+        position: null, // 지도에서 선택된 카페이므로 position은 필요없음
+        name: selectedCafe.name,
+        rating: selectedCafe.rating,
+        reviewCount: selectedCafe.reviewCount,
+        address: selectedCafe.address,
+        phone: selectedCafe.phone,
+        hours: selectedCafe.hours,
+        description: selectedCafe.description,
+        placeUrl: selectedCafe.placeUrl,
+        id: selectedCafe.id || 0 // 실제 ID 사용, 없으면 0
+      }
+      placeMapRef.current.handleReviewClick(cafeData)
+    }
   }
 
   // 별점순으로 모임장소 조회 (API에서 자동으로 처리됨)
@@ -49,7 +73,7 @@ export default function PlacePage() {
       <div className="flex gap-6">
         {/* 왼쪽: 지도 영역 */}
         <div className="flex-1">
-          <SearchInput
+          <PlacePageSearchInput
             searchInput={searchInput}
             setSearchInput={setSearchInput}
             isMapReady={isMapReady}
@@ -65,7 +89,7 @@ export default function PlacePage() {
             handleSuggestionClick={handleSuggestionClick}
             inputError={inputError}
           />
-          {/* 지도 컨테이너 */}
+          {/* 모임장소용 고급 지도 컨테이너 */}
           <div className="w-full h-[70vh] mt-16 rounded shadow border relative">
             <div
               ref={mapRef}
@@ -87,6 +111,7 @@ export default function PlacePage() {
           mapRef={mapRef} 
           mapInstance={mapInstance}
           onCafeSelect={handleCafeSelect}
+          ref={placeMapRef}
         />
         
         {/* 오른쪽: 상세 정보 패널 */}
@@ -131,16 +156,44 @@ export default function PlacePage() {
                   <button 
                     className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600 transition-colors"
                     onClick={() => {
-                      if (selectedCafe.placeUrl) {
-                        window.open(selectedCafe.placeUrl, '_blank')
+                      console.log('🔍 오른쪽 패널 상세보기 버튼 클릭됨')
+                      console.log('🔍 selectedCafe:', selectedCafe)
+                      console.log('🔍 selectedCafe.placeId:', selectedCafe.placeId)
+                      
+                      if (selectedCafe.placeId && selectedCafe.placeId.trim() !== '') {
+                        // 카카오맵 외부 링크로 이동
+                        const kakaoMapUrl = `https://place.map.kakao.com/${selectedCafe.placeId}`
+                        console.log('✅ 카카오맵 외부 링크로 이동:', kakaoMapUrl)
+                        window.open(kakaoMapUrl, '_blank')
                       } else {
-                        alert('해당 매장의 상세 정보가 없습니다.')
+                        console.log('❌ placeId가 없음, 카카오맵 검색 API 사용')
+                        // placeId가 없으면 카카오맵 검색 API를 사용해서 place_url 찾기
+                        if (placeMapRef.current) {
+                          // PlaceMap의 searchKakaoPlaceUrl 함수를 사용
+                          const searchAndOpen = async () => {
+                            try {
+                              const placeUrl = await placeMapRef.current?.searchKakaoPlaceUrl(selectedCafe.name, selectedCafe.address || '')
+                              if (placeUrl) {
+                                console.log('✅ 카카오맵 검색으로 place_url 찾음:', placeUrl)
+                                window.open(placeUrl, '_blank')
+                              } else {
+                                alert('해당 매장의 상세 정보를 찾을 수 없습니다.')
+                              }
+                            } catch (error) {
+                              console.error('❌ 카카오맵 검색 실패:', error)
+                              alert('해당 매장의 상세 정보를 찾을 수 없습니다.')
+                            }
+                          }
+                          searchAndOpen()
+                        } else {
+                          alert('해당 매장의 상세 정보가 없습니다.')
+                        }
                       }
                     }}
                   >
                     상세보기
                   </button>
-                  <button className="bg-yellow-400 text-gray-800 px-4 py-2 rounded text-sm font-semibold hover:bg-yellow-500 transition-colors">
+                  <button className="bg-yellow-400 text-gray-800 px-4 py-2 rounded text-sm font-semibold hover:bg-yellow-500 transition-colors" onClick={handleReviewClick}>
                     리뷰보기
                   </button>
                 </div>

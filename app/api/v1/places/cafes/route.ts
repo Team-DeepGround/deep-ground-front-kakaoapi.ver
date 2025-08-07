@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 실제 백엔드 API 호출
-    const backendUrl = `${process.env.BACKEND_API_URL || 'http://localhost:8080'}/api/v1/community-place/${encodeURIComponent(specificAddressId)}`;
+    const backendUrl = `${process.env.BACKEND_API_URL || 'http://localhost:8080'}/api/v1/communityPlace/${encodeURIComponent(specificAddressId)}`;
     
         const response = await fetch(backendUrl, {
           method: 'GET',
