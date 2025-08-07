@@ -20,6 +20,15 @@ export interface ReviewData {
   mediaUrl: string[]
 }
 
+export interface ReviewDetailData {
+  communityPlaceReviewId: number
+  content: string
+  nickname: string
+  scope: number
+  memberId: number
+  mediaUrl: string[]
+}
+
 export interface ReviewListResponse {
   success: boolean
   data?: {
@@ -108,4 +117,15 @@ export async function getCafeReviews(specificAddressId: number, page: number = 0
   searchParams.append('size', size.toString())
   
   return apiClient(`/communityPlace/reviews/${specificAddressId}?${searchParams.toString()}`)
+}
+
+// 리뷰 상세보기 조회
+export async function getReviewDetail(reviewId: number, scheduleId: number): Promise<{ 
+  status: number; 
+  message: string; 
+  result: ReviewDetailData;
+  success?: boolean;
+  data?: ReviewDetailData;
+}> {
+  return apiClient(`/communityPlace/${reviewId}`)
 } 

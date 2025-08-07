@@ -1,11 +1,11 @@
 "use client"
 
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react"
-import { getCafeReviews, ReviewData } from '@/lib/api/places'
+import { getCafeReviews, getReviewDetail, ReviewData, ReviewDetailData } from '@/lib/api/places'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Star, MessageCircle, Image as ImageIcon } from 'lucide-react'
+import { Star, MessageCircle, Image as ImageIcon, Eye } from 'lucide-react'
 
 interface PlaceMapProps {
   mapRef: React.RefObject<HTMLDivElement | null>
@@ -54,6 +54,11 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
   const [reviewsLoading, setReviewsLoading] = useState(false)
   const [currentReviewPage, setCurrentReviewPage] = useState(0)
   const [totalReviewPages, setTotalReviewPages] = useState(0)
+  
+  // 리뷰 상세보기 관련 상태
+  const [selectedReviewDetail, setSelectedReviewDetail] = useState<ReviewDetailData | null>(null)
+  const [showReviewDetailModal, setShowReviewDetailModal] = useState(false)
+  const [reviewDetailLoading, setReviewDetailLoading] = useState(false)
 
   // 정렬된 리스트 (visibleCafes만)
   const sortedCafeList = [...visibleCafes].sort((a, b) => {
@@ -1022,6 +1027,44 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
     setTotalReviewPages(0)
   }
 
+  // 리뷰 상세보기 조회
+  const handleReviewDetailClick = async (reviewId: number) => {
+    setReviewDetailLoading(true)
+    setShowReviewDetailModal(true)
+    
+    try {
+      // scheduleId는 임시로 1로 설정 (실제로는 선택된 스케줄 ID를 사용해야 함)
+      const response = await getReviewDetail(reviewId, 1)
+      
+      console.log('리뷰 상세보기 응답:', response)
+      
+      // 백엔드 응답 구조에 따라 데이터 추출
+      let reviewDetail: ReviewDetailData | null = null
+      
+      if (response.status === 200) {
+        if (response.result) {
+          // result 필드에서 데이터 추출
+          reviewDetail = response.result
+        } else if (response.data) {
+          // data 필드에서 데이터 추출
+          reviewDetail = response.data
+        }
+      }
+      
+      if (reviewDetail) {
+        setSelectedReviewDetail(reviewDetail)
+      } else {
+        console.error('리뷰 상세보기 데이터 추출 실패:', response)
+        alert('리뷰 상세보기를 불러올 수 없습니다.')
+      }
+    } catch (error) {
+      console.error('리뷰 상세보기 조회 중 오류:', error)
+      alert('리뷰 상세보기를 불러올 수 없습니다.')
+    } finally {
+      setReviewDetailLoading(false)
+    }
+  }
+
   // 외부에서 호출할 수 있도록 리뷰 기능 노출
   useImperativeHandle(ref, () => ({
     handleReviewClick: (cafe: CafeData) => {
@@ -1198,6 +1241,17 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
                         ))}
                       </div>
                     )}
+                    
+                    {/* 상세보기 버튼 */}
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => handleReviewDetailClick(review.communityPlaceReviewId)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                      >
+                        <Eye className="w-3 h-3" />
+                        상세보기
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1270,6 +1324,76 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
           )}
         </div>
       )}
+      
+      {/* 리뷰 상세보기 모달 */}
+      <Dialog open={showReviewDetailModal} onOpenChange={setShowReviewDetailModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>리뷰 상세보기</DialogTitle>
+          </DialogHeader>
+          
+          {reviewDetailLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : selectedReviewDetail ? (
+            <div className="space-y-4">
+              {/* 별점 */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-5 h-5 ${
+                        i < selectedReviewDetail.scope ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <Badge variant="secondary">{selectedReviewDetail.scope}/5.0</Badge>
+              </div>
+              
+              {/* 작성자 */}
+              <div className="text-sm text-gray-600">
+                작성자: {selectedReviewDetail.nickname}
+              </div>
+              
+              {/* 리뷰 내용 */}
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {selectedReviewDetail.content}
+                </p>
+              </div>
+              
+              {/* 이미지 */}
+              {selectedReviewDetail.mediaUrl && selectedReviewDetail.mediaUrl.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-gray-700">첨부 이미지</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedReviewDetail.mediaUrl.map((url, imgIndex) => (
+                      <div key={imgIndex} className="aspect-square">
+                        <img
+                          src={url}
+                          alt={`리뷰 이미지 ${imgIndex + 1}`}
+                          className="w-full h-full object-cover rounded-md"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              리뷰 정보를 불러올 수 없습니다.
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 })
