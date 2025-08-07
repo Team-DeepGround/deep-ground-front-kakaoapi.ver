@@ -2,9 +2,9 @@
 
 import React, { useRef, useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { SearchInput } from "./SearchInput"
-import { useKakaoMap } from "@/hooks/useKakaoMap"
-import { usePlaceSearch } from "@/hooks/usePlaceSearch"
+import { ScheduleSearchInput } from "./SearchInput"
+import { useScheduleMap } from "@/hooks/useKakaoMap"
+import { useSchedulePlaceSearch } from "@/hooks/usePlaceSearch"
 import { Button } from "@/components/ui/button"
 
 interface PlaceSelectModalProps {
@@ -15,9 +15,9 @@ interface PlaceSelectModalProps {
 
 export default function PlaceSelectModal({ open, onClose, onSelect }: PlaceSelectModalProps) {
   const mapRef = useRef<HTMLDivElement | null>(null)
-  const { mapInstance, isMapReady, isLoading: isMapLoading } = useKakaoMap(mapRef)
+  const { mapInstance, isMapReady, isLoading: isMapLoading, selectedPlace, showSelectedPlace } = useScheduleMap(mapRef)
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const usePlaceSearchResult = usePlaceSearch(mapInstance, isMapReady, isMapLoading, setShowSuggestions, null)
+  const usePlaceSearchResult = useSchedulePlaceSearch(mapInstance, isMapReady, isMapLoading)
   const {
     searchInput,
     setSearchInput,
@@ -28,95 +28,124 @@ export default function PlaceSelectModal({ open, onClose, onSelect }: PlaceSelec
     setIsComposing,
     inputError,
     setInputError,
-    selectedPlace,
+    selectedPlace: searchSelectedPlace,
     handleSuggestionClick,
     handleKeyDown,
     handleUnifiedSearch,
     placeMarkers,
+    selectedSchedulePlace,
+    handleSchedulePlaceSelect,
   } = usePlaceSearchResult
 
-  // 마커 관리
+  // 마커 관리 (스터디 일정 추가용으로 단순화)
   const markerRef = useRef<any>(null)
   useEffect(() => {
-    // 1. selectedPlace가 있으면 단일 마커만 표시
-    if (mapInstance.current && selectedPlace) {
+    // 선택된 장소가 있으면 단일 마커만 표시
+    if (mapInstance.current && searchSelectedPlace) {
       if (markerRef.current) markerRef.current.setMap(null)
       const marker = new window.kakao.maps.Marker({
         map: mapInstance.current,
-        position: new window.kakao.maps.LatLng(selectedPlace.y, selectedPlace.x),
+        position: new window.kakao.maps.LatLng(searchSelectedPlace.y, searchSelectedPlace.x),
       })
       markerRef.current = marker
-      mapInstance.current.setCenter(new window.kakao.maps.LatLng(selectedPlace.y, selectedPlace.x))
+      mapInstance.current.setCenter(new window.kakao.maps.LatLng(searchSelectedPlace.y, searchSelectedPlace.x))
+      
+      // 선택된 장소 정보 업데이트
+      showSelectedPlace(searchSelectedPlace)
+      
       return () => {
         if (markerRef.current) markerRef.current.setMap(null)
       }
     }
-    // 2. placeMarkers가 있으면 모두 지도에 표시
-    if (mapInstance.current && placeMarkers && placeMarkers.length > 0) {
-      placeMarkers.forEach(({ marker }) => marker.setMap(mapInstance.current))
-      return () => {
-        placeMarkers.forEach(({ marker }) => marker.setMap(null))
-      }
-    }
-    // 3. 아무것도 없으면 기존 마커 제거
+    // 아무것도 없으면 기존 마커 제거
     if (markerRef.current) markerRef.current.setMap(null)
-  }, [selectedPlace, placeMarkers, mapInstance])
+  }, [searchSelectedPlace, mapInstance, showSelectedPlace])
 
-  // 지도 드래그 후 중심 좌표가 바뀌면 카테고리만 입력된 경우 자동 재검색
+  // 모달이 열릴 때 지도 컨테이너 강제 생성
   useEffect(() => {
-    if (!mapInstance.current || !isMapReady) return
-    const map = mapInstance.current
-    const onDragEnd = () => {
-      const categories = [
-        "카페",
-        "스터디카페",
-        "음식점",
-        "편의점",
-        "주차장",
-        "주유소",
-        "약국",
-        "마트",
-        "은행",
-        "술집"
-      ]
-      if (categories.includes(searchInput.trim())) {
-        handleUnifiedSearch()
-      }
-    }
-    window.kakao.maps.event.addListener(map, "dragend", onDragEnd)
-    return () => {
-      window.kakao.maps.event.removeListener(map, "dragend", onDragEnd)
-    }
-  }, [searchInput, isMapReady, mapInstance, handleUnifiedSearch])
+    if (open) {
+      console.log('🗺️ 스터디 일정 추가 - 모달 열림')
+      
+      // 모달이 열린 후 지도 컨테이너 초기화
+      const timer = setTimeout(() => {
+        // ref가 준비될 때까지 기다림
+        let checkCount = 0
+        const checkRef = () => {
+          if (mapRef.current) {
+            console.log('🗺️ mapRef.current가 준비됨')
+            
+            // 컨테이너가 존재하는지 확인
+            if (!mapRef.current) {
+              console.error('🗺️ mapRef.current가 null입니다')
+              return
+            }
 
-  useEffect(() => {
-    if (!mapInstance.current) return;
-    const map = mapInstance.current;
-    const closeSuggestions = () => setShowSuggestions(false);
-    window.kakao.maps.event.addListener(map, "dragstart", closeSuggestions);
-    window.kakao.maps.event.addListener(map, "dragend", closeSuggestions);
-    window.kakao.maps.event.addListener(map, "zoom_changed", closeSuggestions);
-    return () => {
-      window.kakao.maps.event.removeListener(map, "dragstart", closeSuggestions);
-      window.kakao.maps.event.removeListener(map, "dragend", closeSuggestions);
-      window.kakao.maps.event.removeListener(map, "zoom_changed", closeSuggestions);
-    };
-  }, [mapInstance, setShowSuggestions]);
+            // 컨테이너 크기를 명시적으로 설정
+            const container = mapRef.current
+            container.style.width = '100%'
+            container.style.height = '100%'
+            container.style.minHeight = '400px'
+            container.style.minWidth = '300px'
+            container.style.display = 'block'
+            container.style.position = 'relative'
+            container.style.zIndex = '1'
+            
+            console.log('🗺️ 지도 컨테이너 크기 설정 완료:', {
+              width: container.offsetWidth,
+              height: container.offsetHeight,
+              style: container.style.cssText
+            })
+            
+            // 지도가 준비되면 relayout 실행
+            if (isMapReady && mapInstance.current) {
+              setTimeout(() => {
+                try {
+                  mapInstance.current.relayout()
+                  console.log('🗺️ 스터디 일정 추가 - 지도 relayout 완료')
+                } catch (error) {
+                  console.error('🗺️ 스터디 일정 추가 - 지도 relayout 실패:', error)
+                }
+              }, 100)
+            }
+          } else {
+            checkCount++
+            if (checkCount < 50) { // 최대 5초 대기
+              setTimeout(checkRef, 100)
+            } else {
+              console.log('🗺️ mapRef.current가 준비되지 않음 - 타임아웃')
+            }
+          }
+        }
+        
+        checkRef()
+      }, 200) // 모달 애니메이션 완료 후 실행
+
+      return () => clearTimeout(timer)
+    }
+  }, [open, isMapReady, mapInstance])
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>장소 검색 및 선택</DialogTitle>
+          <DialogTitle>스터디 일정 장소 선택</DialogTitle>
         </DialogHeader>
         <div className="relative w-full h-[70vh]">
-          {/* 단순한 카카오 지도 */}
+          {/* 스터디 일정 추가용 간단한 카카오 지도 */}
           <div
             ref={mapRef}
             className="w-full h-full rounded-lg shadow-lg border"
-            style={{ minHeight: '400px' }}
+            style={{ 
+              minHeight: '400px',
+              minWidth: '300px',
+              position: 'relative',
+              zIndex: 1,
+              display: 'block',
+              width: '100%',
+              height: '100%'
+            }}
           />
-          <SearchInput
+          <ScheduleSearchInput
             searchInput={searchInput}
             setSearchInput={setSearchInput}
             isMapReady={isMapReady}
@@ -133,27 +162,27 @@ export default function PlaceSelectModal({ open, onClose, onSelect }: PlaceSelec
             inputError={inputError}
           />
         </div>
-        {selectedPlace && (
+        {searchSelectedPlace && (
           <div className="mt-4 p-3 border rounded bg-gray-50 text-gray-800">
-            <div className="font-semibold">{selectedPlace.place_name}</div>
-            <div className="text-sm text-gray-600">{selectedPlace.road_address_name || selectedPlace.address_name}</div>
+            <div className="font-semibold">{searchSelectedPlace.place_name}</div>
+            <div className="text-sm text-gray-600">{searchSelectedPlace.road_address_name || searchSelectedPlace.address_name}</div>
             <div className="flex gap-2 mt-2">
               <Button
                 size="sm"
                 onClick={() => {
                   onSelect({
-                    name: selectedPlace.place_name,
-                    address: selectedPlace.road_address_name || selectedPlace.address_name,
-                    lat: Number(selectedPlace.y),
-                    lng: Number(selectedPlace.x),
+                    name: searchSelectedPlace.place_name,
+                    address: searchSelectedPlace.road_address_name || searchSelectedPlace.address_name,
+                    lat: Number(searchSelectedPlace.y),
+                    lng: Number(searchSelectedPlace.x),
                   })
                   onClose()
                 }}
               >
-                이 장소 선택
+                이 장소로 일정 추가
               </Button>
               <a
-                href={`https://map.kakao.com/link/to/${encodeURIComponent(selectedPlace.place_name)},${selectedPlace.y},${selectedPlace.x}`}
+                href={`https://map.kakao.com/link/to/${encodeURIComponent(searchSelectedPlace.place_name)},${searchSelectedPlace.y},${searchSelectedPlace.x}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
