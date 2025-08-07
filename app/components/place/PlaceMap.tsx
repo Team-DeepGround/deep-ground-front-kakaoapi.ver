@@ -317,7 +317,7 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
         gap: 8px;
         margin-top: 12px;
       ">
-        <button class="detail-btn" onmousedown="event.preventDefault(); event.stopPropagation(); console.log('상세보기 클릭'); if('${cafe.placeUrl}') { window.open('${cafe.placeUrl}', '_blank'); } else { alert('해당 매장의 상세 정보가 없습니다.'); }" style="
+        <button class="detail-btn" style="
           background: #4A90E2;
           color: white;
           border: none;
@@ -329,7 +329,7 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
         ">
           상세보기
         </button>
-        <button class="review-btn" onmousedown="event.preventDefault(); event.stopPropagation(); console.log('리뷰보기 클릭'); window.handleReviewClick && window.handleReviewClick('${cafe.name}')" style="
+        <button class="review-btn" style="
           background: #FFD600;
           color: #333;
           border: none;
@@ -355,6 +355,9 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
     })
     
     if (detailBtn) {
+      // 기존 이벤트 리스너 제거 (중복 방지)
+      detailBtn.removeEventListener('mousedown', detailBtn.onmousedown as any)
+      
       // mousedown 이벤트 사용 (카카오맵과 충돌 방지)
       detailBtn.addEventListener('mousedown', (e) => {
         e.preventDefault()
