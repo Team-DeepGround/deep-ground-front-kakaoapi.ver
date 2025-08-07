@@ -24,10 +24,12 @@ interface CafeData {
   description?: string
   id: number
   placeUrl?: string
+  placeId?: string // 카카오맵 place_id 추가
 }
 
 export interface PlaceMapRef {
   handleReviewClick: (cafe: CafeData) => void
+  searchKakaoPlaceUrl: (name: string, address: string) => Promise<string | null>
 }
 
 export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapInstance, onCafeSelect }, ref) => {
@@ -69,6 +71,7 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
 
   // 카페 데이터를 가져오는 함수
   const fetchCafeData = async (sortType?: 'rating' | 'reviewCount') => {
+    console.log('🚀 fetchCafeData 함수 시작')
     setIsLoading(true)
     setError(null)
     
@@ -130,19 +133,29 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
 
       // API 응답에서 직접 데이터 추출 (개별 API 호출 불필요)
       console.log('🔍 개별 카페 데이터:', cafeData)
+      console.log('🔍 첫 번째 카페의 모든 필드:', cafeData[0] ? Object.keys(cafeData[0]) : '데이터 없음')
+      console.log('🔍 첫 번째 카페의 전체 데이터:', cafeData[0])
       
-      const cafesWithStats: CafeData[] = cafeData.map((cafe: any, index: number) => ({
-        position: new window.kakao.maps.LatLng(cafe.latitude, cafe.longitude),
-        name: cafe.name || `카페 ${index + 1}`, // name이 null인 경우 기본값 설정
-        rating: cafe.avgScope || 0,
-        reviewCount: cafe.countReview || 0,
-        address: cafe.location || '',
-        phone: cafe.phone || '',
-        hours: cafe.hours || '',
-        description: cafe.description || '',
-        id: cafe.id || index + 1, // 숫자 ID로 변경
-        placeUrl: cafe.placeUrl || ''
-      }))
+      const cafesWithStats: CafeData[] = cafeData.map((cafe: any, index: number) => {
+        console.log(`🔍 카페 ${index + 1} 원본 데이터:`, cafe)
+        console.log(`🔍 카페 ${index + 1} 모든 필드:`, Object.keys(cafe))
+        
+        const cafeData = {
+          position: new window.kakao.maps.LatLng(cafe.latitude, cafe.longitude),
+          name: cafe.name || `카페 ${index + 1}`, // name이 null인 경우 기본값 설정
+          rating: cafe.avgScope || 0,
+          reviewCount: cafe.countReview || 0,
+          address: cafe.location || '',
+          phone: cafe.phone || '',
+          hours: cafe.hours || '',
+          description: cafe.description || '',
+          id: cafe.id || index + 1, // 숫자 ID로 변경
+          placeUrl: cafe.placeUrl || '',
+          placeId: cafe.placeId || cafe.kakaoPlaceId || cafe.place_id || cafe.kakao_place_id || cafe.mapId || cafe.kakaoMapId || cafe.kakaoPlaceId || '' // 카카오맵 place_id 추가
+        }
+        console.log('🔍 카페 데이터 변환:', cafeData.name, 'placeId:', cafeData.placeId)
+        return cafeData
+      })
 
       console.log('🎯 최종 변환된 카페 데이터:', cafesWithStats)
       
@@ -368,10 +381,30 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
         e.preventDefault()
         e.stopPropagation()
         console.log('✅ 상세보기 클릭됨:', cafe.name)
-        if (cafe.placeUrl) {
-          window.open(cafe.placeUrl, '_blank')
+        
+        // 카카오맵 place_id를 사용해서 외부 링크로 이동
+        console.log('🔍 상세보기 클릭 - placeId 확인:', cafe.placeId, '카페명:', cafe.name)
+        console.log('🔍 해당 카페의 전체 데이터:', cafe)
+        
+        if (cafe.placeId) {
+          // 카카오맵 외부 링크로 이동
+          const kakaoMapUrl = `https://place.map.kakao.com/${cafe.placeId}`
+          console.log('✅ 카카오맵 외부 링크로 이동:', kakaoMapUrl)
+          window.open(kakaoMapUrl, '_blank')
         } else {
-          alert('해당 매장의 상세 정보가 없습니다.')
+          // placeId가 없는 경우 기존 방식으로 카카오맵 검색 API 사용
+          console.log('🔍 placeId가 없어서 카카오맵 검색 API로 place_url 찾기 시도')
+          searchKakaoPlaceUrl(cafe.name, cafe.address || '').then(placeUrl => {
+            if (placeUrl) {
+              console.log('✅ 카카오맵 검색으로 place_url 찾음:', placeUrl)
+              window.open(placeUrl, '_blank')
+            } else {
+              alert('해당 매장의 상세 정보를 찾을 수 없습니다.')
+            }
+          }).catch(error => {
+            console.error('❌ 카카오맵 검색 실패:', error)
+            alert('해당 매장의 상세 정보를 찾을 수 없습니다.')
+          })
         }
       })
       console.log('✅ 상세보기 버튼 이벤트 리스너 추가됨')
@@ -662,6 +695,8 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
     console.log('🗺️ mapRef.current 상태:', !!mapRef.current)
     console.log('🗺️ mapRef.current 크기:', mapRef.current ? `${mapRef.current.offsetWidth}x${mapRef.current.offsetHeight}` : 'N/A')
     
+    console.log('🔍 이 useEffect가 실행되었습니다!')
+    
     // SDK가 준비되지 않았으면 대기
     if (!window.kakao?.maps) {
       console.log('🗺️ 카카오맵 SDK가 아직 준비되지 않음 - API 호출 대기')
@@ -716,7 +751,13 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
       }
       
       console.log('✅ 상세보기 실행:', cafe.name)
-      if (cafe.placeUrl) {
+      if (cafe.placeId) {
+        // 카카오맵 외부 링크로 이동
+        const kakaoMapUrl = `https://place.map.kakao.com/${cafe.placeId}`
+        console.log('✅ 카카오맵 외부 링크로 이동:', kakaoMapUrl)
+        window.open(kakaoMapUrl, '_blank')
+      } else if (cafe.placeUrl) {
+        // placeId가 없는 경우 기존 방식으로 카카오맵 열기
         window.open(cafe.placeUrl, '_blank')
       } else {
         alert('해당 매장의 상세 정보가 없습니다.')
@@ -1027,6 +1068,83 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
     setTotalReviewPages(0)
   }
 
+  // 카카오맵 검색 API로 place_url 찾기
+  const searchKakaoPlaceUrl = async (name: string, address: string): Promise<string | null> => {
+    try {
+      // 카카오맵 검색 API 호출 (REST API 키 필요)
+      // 검색 쿼리를 더 간단하게 만듦 (카페명만 사용)
+      const searchQuery = name
+      
+      // 환경 변수 디버깅
+      console.log('🔍 환경 변수 확인:')
+      console.log('NEXT_PUBLIC_KAKAO_REST_API_KEY:', process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY)
+      console.log('KAKAO_REST_API_KEY:', process.env.KAKAO_REST_API_KEY)
+      console.log('🔍 검색 쿼리:', searchQuery)
+      
+      let kakaoApiKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
+      
+      // 따옴표 제거 (환경 변수가 문자열로 저장된 경우)
+      if (kakaoApiKey && typeof kakaoApiKey === 'string') {
+        kakaoApiKey = kakaoApiKey.replace(/^["']|["']$/g, '')
+      }
+      
+      if (!kakaoApiKey) {
+        console.error('❌ 카카오맵 REST API 키가 설정되지 않았습니다.')
+        return null
+      }
+      
+      const response = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(searchQuery)}`, {
+        headers: {
+          'Authorization': `KakaoAK ${kakaoApiKey}`
+        }
+      })
+      
+      if (!response.ok) {
+        console.error('카카오맵 검색 API 호출 실패:', response.status)
+        return null
+      }
+      
+      const data = await response.json()
+      console.log('카카오맵 검색 결과:', data)
+      console.log('검색된 문서 수:', data.documents ? data.documents.length : 0)
+      
+      if (data.documents && data.documents.length > 0) {
+        console.log('첫 번째 검색 결과:', data.documents[0])
+        console.log('place_url:', data.documents[0].place_url)
+        // 첫 번째 결과의 place_url 반환 (http://place.map.kakao.com/{id} 형태)
+        return data.documents[0].place_url
+      } else {
+        console.log('검색 결과가 없습니다. 검색 쿼리:', searchQuery)
+        console.log('same_name 정보:', data.same_name)
+        
+        // same_name의 keyword로 다시 검색 시도
+        if (data.same_name && data.same_name.keyword) {
+          console.log('🔍 same_name keyword로 재검색 시도:', data.same_name.keyword)
+          const retryResponse = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(data.same_name.keyword)}`, {
+            headers: {
+              'Authorization': `KakaoAK ${kakaoApiKey}`
+            }
+          })
+          
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json()
+            console.log('재검색 결과:', retryData)
+            
+            if (retryData.documents && retryData.documents.length > 0) {
+              console.log('재검색 성공 - place_url:', retryData.documents[0].place_url)
+              return retryData.documents[0].place_url
+            }
+          }
+        }
+      }
+      
+      return null
+    } catch (error) {
+      console.error('카카오맵 검색 중 오류:', error)
+      return null
+    }
+  }
+
   // 리뷰 상세보기 조회
   const handleReviewDetailClick = async (reviewId: number) => {
     setReviewDetailLoading(true)
@@ -1069,6 +1187,9 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
   useImperativeHandle(ref, () => ({
     handleReviewClick: (cafe: CafeData) => {
       handleReviewClick(cafe)
+    },
+    searchKakaoPlaceUrl: (name: string, address: string) => {
+      return searchKakaoPlaceUrl(name, address)
     }
   }))
 
@@ -1143,6 +1264,8 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
     )
   }
 
+  console.log('🎯 PlaceMap 컴포넌트 렌더링')
+  
   return (
     <div className="w-80 bg-white rounded-lg shadow-lg p-4 h-[70vh] overflow-y-auto">
       {/* 헤더 */}
@@ -1164,6 +1287,7 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
               <button
                 className={`px-3 py-1 rounded ${sortType === 'rating' ? 'bg-blue-500 text-white' : 'bg-gray-200'} ${isCentering ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={() => {
+                  console.log('🔘 별점순 버튼 클릭됨')
                   if (!isCentering) {
                     setSortType('rating')
                     fetchCafeData('rating')
@@ -1176,6 +1300,7 @@ export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapIns
               <button
                 className={`px-3 py-1 rounded ${sortType === 'reviewCount' ? 'bg-blue-500 text-white' : 'bg-gray-200'} ${isCentering ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={() => {
+                  console.log('🔘 리뷰순 버튼 클릭됨')
                   if (!isCentering) {
                     setSortType('reviewCount')
                     fetchCafeData('reviewCount')

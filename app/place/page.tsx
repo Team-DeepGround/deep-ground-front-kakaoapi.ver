@@ -7,15 +7,17 @@ import { PlacePageSearchInput } from "@/app/components/place/SearchInput"
 import { PlaceMap, PlaceMapRef } from "@/app/components/place/PlaceMap"
 
 interface CafeInfo {
-  id?: number
+  id: number
   name: string
   rating: number
   reviewCount: number
-  address: string
+  address?: string
   phone?: string
   hours?: string
   description?: string
   placeUrl?: string
+  placeId?: string
+  position?: any // kakao.maps.LatLng
 }
 
 export default function PlacePage() {
@@ -39,6 +41,8 @@ export default function PlacePage() {
   } = usePlacePageSearch(mapInstance, isMapReady, isMapLoading)
 
   const handleCafeSelect = (cafe: CafeInfo) => {
+    console.log('🔍 handleCafeSelect 호출됨:', cafe)
+    console.log('🔍 cafe.placeId:', cafe.placeId)
     selectCafe(cafe)
   }
 
@@ -152,10 +156,38 @@ export default function PlacePage() {
                   <button 
                     className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600 transition-colors"
                     onClick={() => {
-                      if (selectedCafe.placeUrl) {
-                        window.open(selectedCafe.placeUrl, '_blank')
+                      console.log('🔍 오른쪽 패널 상세보기 버튼 클릭됨')
+                      console.log('🔍 selectedCafe:', selectedCafe)
+                      console.log('🔍 selectedCafe.placeId:', selectedCafe.placeId)
+                      
+                      if (selectedCafe.placeId && selectedCafe.placeId.trim() !== '') {
+                        // 카카오맵 외부 링크로 이동
+                        const kakaoMapUrl = `https://place.map.kakao.com/${selectedCafe.placeId}`
+                        console.log('✅ 카카오맵 외부 링크로 이동:', kakaoMapUrl)
+                        window.open(kakaoMapUrl, '_blank')
                       } else {
-                        alert('해당 매장의 상세 정보가 없습니다.')
+                        console.log('❌ placeId가 없음, 카카오맵 검색 API 사용')
+                        // placeId가 없으면 카카오맵 검색 API를 사용해서 place_url 찾기
+                        if (placeMapRef.current) {
+                          // PlaceMap의 searchKakaoPlaceUrl 함수를 사용
+                          const searchAndOpen = async () => {
+                            try {
+                              const placeUrl = await placeMapRef.current?.searchKakaoPlaceUrl(selectedCafe.name, selectedCafe.address || '')
+                              if (placeUrl) {
+                                console.log('✅ 카카오맵 검색으로 place_url 찾음:', placeUrl)
+                                window.open(placeUrl, '_blank')
+                              } else {
+                                alert('해당 매장의 상세 정보를 찾을 수 없습니다.')
+                              }
+                            } catch (error) {
+                              console.error('❌ 카카오맵 검색 실패:', error)
+                              alert('해당 매장의 상세 정보를 찾을 수 없습니다.')
+                            }
+                          }
+                          searchAndOpen()
+                        } else {
+                          alert('해당 매장의 상세 정보가 없습니다.')
+                        }
                       }
                     }}
                   >
