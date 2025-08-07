@@ -118,7 +118,7 @@ export const api = {
 };
 
 export async function apiClientFormData(endpoint: string, data: any, accessToken: string) {
-    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}${endpoint}`;
+    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1${endpoint}`;
     const headers = new Headers();
 
     if (accessToken) {

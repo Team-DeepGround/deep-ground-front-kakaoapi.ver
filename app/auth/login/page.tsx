@@ -99,7 +99,13 @@ export default function LoginPage() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/auth/oauth/${provider}/login`)
       const { redirectUrl } = await res.json()
       if (redirectUrl) {
-        window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1${redirectUrl}`
+        // redirectUrl이 이미 전체 URL인지 확인
+        if (redirectUrl.startsWith('http')) {
+          window.location.href = redirectUrl
+        } else {
+          // 상대 경로인 경우 BASE_URL과 결합
+          window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}${redirectUrl}`
+        }
       } else {
         toast({
           title: "소셜 로그인 실패",

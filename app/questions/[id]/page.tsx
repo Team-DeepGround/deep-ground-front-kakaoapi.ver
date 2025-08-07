@@ -43,7 +43,7 @@ function useAuthImageUrls(urls: string[] | undefined) {
           // /media/TOooRK0fhC_haerin.jpg → TOooRK0fhC_haerin.jpg만 추출
           const pathVar = url.startsWith("/") ? url.substring(1) : url;
           const fileName = pathVar.replace("media/", "");
-          const fetchUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/question/media/${fileName}`;
+          const fetchUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/question/media/${fileName}`;
           console.log("fetch 요청:", fetchUrl);
           try {
             const res = await fetch(fetchUrl, {
@@ -58,7 +58,7 @@ function useAuthImageUrls(urls: string[] | undefined) {
             return null
           }
         } else if (url.startsWith("/")) {
-          return `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}${url}`
+          return `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1${url}`
         } else {
           return url
         }
@@ -90,7 +90,7 @@ function AuthImage({ imageUrl, alt = "이미지" }: { imageUrl: string; alt?: st
     const fetchImage = async () => {
       const token = localStorage.getItem("auth_token");
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}${imageUrl}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1${imageUrl}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!res.ok) throw new Error("이미지 로드 실패");
@@ -147,7 +147,7 @@ export default function QuestionDetailPage() {
     setLoading(true)
     try {
       const accessToken = localStorage.getItem("auth_token")
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/questions/${params.id}`,
+             const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/questions/${params.id}`,
         accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined
       )
       const data = await res.json()
@@ -276,7 +276,7 @@ export default function QuestionDetailPage() {
 
     try {
       const accessToken = localStorage.getItem("auth_token");
-      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/answers`, {
+             await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/answers`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -322,12 +322,12 @@ export default function QuestionDetailPage() {
       const isCurrentlyLiked = likedAnswers.includes(answerId);
       let response;
       if (isCurrentlyLiked) {
-        response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/answers/like/${answerId}`, {
+        response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/answers/like/${answerId}`, {
           method: "DELETE",
           headers: { Authorization: `Bearer ${authToken}` },
         });
       } else {
-        response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/answers/like/${answerId}`, {
+        response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/answers/like/${answerId}`, {
           method: "POST",
           headers: { Authorization: `Bearer ${authToken}` },
         });
@@ -373,7 +373,7 @@ export default function QuestionDetailPage() {
 
     try {
       const authToken = localStorage.getItem("auth_token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/comments`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -407,7 +407,7 @@ export default function QuestionDetailPage() {
   const handleEditComment = async (commentId: number, answerId: number) => {
     try {
       const authToken = localStorage.getItem("auth_token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/comments/${commentId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/comments/${commentId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -435,7 +435,7 @@ export default function QuestionDetailPage() {
   const handleDeleteComment = async (commentId: number, answerId: number) => {
     try {
       const authToken = localStorage.getItem("auth_token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/comments/${commentId}?answerId=${answerId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/comments/${commentId}?answerId=${answerId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${authToken}`,

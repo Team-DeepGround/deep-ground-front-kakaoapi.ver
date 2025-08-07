@@ -127,7 +127,7 @@ export default function CreateQuestionPage() {
         body: formData,
       }
       // Content-Type은 명시하지 않음
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/questions`, fetchOptions)
+             const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/questions`, fetchOptions)
       const data = await res.json()
 
       if (res.ok) {

@@ -136,7 +136,7 @@ export default function ReviewModal({ open, onOpenChange, schedule }: ReviewModa
         });
       } else {
         // 등록(post)
-        res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/communityPlace/reviews`, {
+        res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/communityPlace/reviews`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
