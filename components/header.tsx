@@ -46,7 +46,7 @@ const navigation = [
 
 export default function Header() {
   const pathname = usePathname()
-  const { isAuthenticated, logout } = useAuth()
+  const { isAuthenticated, logout, role } = useAuth()
   const { unreadCount, isConnected } = useNotificationContext()
   const [searchOpen, setSearchOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
@@ -105,6 +105,18 @@ export default function Header() {
                 {item.name}
               </Link>
             ))}
+            {role === "ROLE_ADMIN" && ( // ✅ 관리자일 경우만 보임
+              <Link
+                href="/admin"
+                className={cn(
+                  "flex items-center gap-2 text-sm font-medium text-destructive hover:text-destructive",
+                  pathname.startsWith("/admin") && "underline",
+                )}
+              >
+                <Shield className="h-4 w-4" />
+                관리자
+              </Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-2">

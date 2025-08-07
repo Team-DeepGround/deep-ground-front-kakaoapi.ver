@@ -47,7 +47,10 @@ export default function LoginPage() {
         )
 
         const role = response.result.role
-
+        if (role === "ROLE_ADMIN") {
+          router.push("/admin")
+          return
+        }
         if (role === "ROLE_GUEST") {
           toast({
             title: "이메일 인증 필요",

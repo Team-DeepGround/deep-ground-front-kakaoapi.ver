@@ -6,20 +6,30 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { MessageSquare, ThumbsUp, Share2, MoreHorizontal, ImageIcon, Send, X, Repeat } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  MessageSquare,
+  ThumbsUp,
+  Share2,
+  MoreHorizontal,
+  Repeat
+} from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import {
   likeFeed,
   unlikeFeed,
-  getFeedMediaUrl,
-  getProfileMediaUrl,
   FetchFeedResponse
 } from "@/lib/api/feed"
 import { FeedComments } from "./feed-comments"
 import { ShareFeedDialog } from "./share-feed-dialog"
 import { AuthImage } from "@/components/ui/auth-image"
+import { ReportModal } from "@/components/report/report-modal"
 
 interface FeedPostProps {
   post: FetchFeedResponse
@@ -33,8 +43,8 @@ export function FeedPost({ post: initialPost, onRefresh }: FeedPostProps) {
   const [post, setPost] = useState(initialPost)
   const [showComments, setShowComments] = useState(false)
   const [showShareDialog, setShowShareDialog] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
 
-  // 좋아요/좋아요 취소
   const handleLike = async (feedId: number, liked: boolean) => {
     if (liked) {
       await unlikeFeed(feedId)
@@ -55,23 +65,19 @@ export function FeedPost({ post: initialPost, onRefresh }: FeedPostProps) {
     }
   }
 
-  // 공유 다이얼로그 열기
   const handleShareClick = () => {
     setShowShareDialog(true)
   }
 
-  // 공유 성공 시 전체 피드 리프레시
   const handleShareSuccess = () => {
     setShowShareDialog(false)
     onRefresh()
   }
 
-  // 댓글 토글
   const handleToggleComments = () => {
     setShowComments(!showComments)
   }
 
-  // 공유된 피드 렌더링
   const renderSharedFeed = (sharedFeed: FetchFeedResponse) => (
     <Card className="mt-3 border-l-4 border-l-blue-500 bg-blue-50/50">
       <CardHeader className="p-3 pb-0">
@@ -84,10 +90,10 @@ export function FeedPost({ post: initialPost, onRefresh }: FeedPostProps) {
         <div className="flex items-center gap-2 mb-2">
           <Avatar className="h-6 w-6">
             {sharedFeed.profileImageId ? (
-              <AuthImage 
-                mediaId={sharedFeed.profileImageId} 
-                type="profile" 
-                alt={sharedFeed.memberName} 
+              <AuthImage
+                mediaId={sharedFeed.profileImageId}
+                type="profile"
+                alt={sharedFeed.memberName}
                 className="h-6 w-6 rounded-full object-cover"
               />
             ) : (
@@ -104,12 +110,12 @@ export function FeedPost({ post: initialPost, onRefresh }: FeedPostProps) {
         {sharedFeed.mediaIds && sharedFeed.mediaIds.length > 0 && (
           <div className="mt-2 rounded-md overflow-hidden">
             {sharedFeed.mediaIds.map((id) => (
-              <AuthImage 
-                key={id} 
-                mediaId={id} 
-                type="feed" 
-                alt="공유된 피드 이미지" 
-                className="w-full h-auto max-h-48 object-cover" 
+              <AuthImage
+                key={id}
+                mediaId={id}
+                type="feed"
+                alt="공유된 피드 이미지"
+                className="w-full h-auto max-h-48 object-cover"
               />
             ))}
           </div>
@@ -126,10 +132,10 @@ export function FeedPost({ post: initialPost, onRefresh }: FeedPostProps) {
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
                 {post.profileImageId ? (
-                  <AuthImage 
-                    mediaId={post.profileImageId} 
-                    type="profile" 
-                    alt={post.memberName} 
+                  <AuthImage
+                    mediaId={post.profileImageId}
+                    type="profile"
+                    alt={post.memberName}
                     className="h-10 w-10 rounded-full object-cover"
                   />
                 ) : (
@@ -158,32 +164,33 @@ export function FeedPost({ post: initialPost, onRefresh }: FeedPostProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>저장하기</DropdownMenuItem>
-                <DropdownMenuItem>신고하기</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowReportModal(true)}>신고하기</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </CardHeader>
-        <CardContent 
-          className="p-4 cursor-pointer hover:bg-gray-50/50 transition-colors" 
+
+        <CardContent
+          className="p-4 cursor-pointer hover:bg-gray-50/50 transition-colors"
           onClick={() => router.push(`/feed/${post.feedId}`)}
         >
           <p className="text-sm whitespace-pre-line">{post.content}</p>
           {post.mediaIds && post.mediaIds.length > 0 && (
             <div className="mt-3 rounded-md overflow-hidden">
               {post.mediaIds.map((id) => (
-                <AuthImage 
-                  key={id} 
-                  mediaId={id} 
-                  type="feed" 
-                  alt="피드 이미지" 
-                  className="w-full h-auto mb-2" 
+                <AuthImage
+                  key={id}
+                  mediaId={id}
+                  type="feed"
+                  alt="피드 이미지"
+                  className="w-full h-auto mb-2"
                 />
               ))}
             </div>
           )}
-          {/* 공유된 피드가 있으면 표시 */}
           {post.sharedFeed && renderSharedFeed(post.sharedFeed)}
         </CardContent>
+
         <CardFooter className="p-4 pt-0 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Button
@@ -210,7 +217,6 @@ export function FeedPost({ post: initialPost, onRefresh }: FeedPostProps) {
               <MessageSquare className="h-4 w-4" />
               <span>{post.commentCount}</span>
             </Button>
-            {/* 공유된 피드가 아닌 경우에만 공유 버튼 표시 */}
             {!post.isShared && (
               <Button
                 variant="ghost"
@@ -227,16 +233,24 @@ export function FeedPost({ post: initialPost, onRefresh }: FeedPostProps) {
             )}
           </div>
         </CardFooter>
+
         {showComments && <FeedComments feedId={post.feedId} onShow={true} />}
       </Card>
 
-      {/* 공유 다이얼로그 */}
       <ShareFeedDialog
         isOpen={showShareDialog}
         onClose={() => setShowShareDialog(false)}
         originalFeed={post}
         onSuccess={handleShareSuccess}
       />
+
+      <ReportModal
+        targetId={post.feedId}
+        targetType="FEED"
+        open={showReportModal}
+        setOpen={setShowReportModal}
+        triggerText={""}
+      />
     </>
   )
-} 
+}
