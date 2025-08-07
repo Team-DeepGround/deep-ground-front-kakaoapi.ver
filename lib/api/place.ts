@@ -9,8 +9,8 @@ export const fetchPlacesApi = async (params: PlaceSearchParams): Promise<PlaceSe
     size: size.toString()
   })
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1'
-  const url = `${baseUrl}/communityPlace/${specificAddressId}?${queryParams.toString()}`
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
+  const url = `${baseUrl}/api/v1/communityPlace/${specificAddressId}?${queryParams.toString()}`
   
   console.log('API 호출 URL:', url)
   console.log('API 파라미터:', params)

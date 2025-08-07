@@ -99,7 +99,7 @@ export default function ProfileForm({
     setIsCheckingNickname(true)
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/${process.env.NEXT_PUBLIC_API_VERSION}/auth/check-nickname?nickname=${encodeURIComponent(formData.nickname)}`
+        `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/auth/check-nickname?nickname=${encodeURIComponent(formData.nickname)}`
       )
       if (res.ok) {
         setIsNicknameAvailable(true)

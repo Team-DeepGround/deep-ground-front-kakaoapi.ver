@@ -1,8 +1,8 @@
 import { toast } from 'sonner';
 import { auth } from '@/lib/auth';
 
-// 상대 경로로 변경
-const API_BASE_URL = '/api/v1';
+// 환경변수에서 API BASE URL을 가져옵니다.
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1`;
 
 export class ApiError extends Error {
     constructor(public status: number, message: string) {

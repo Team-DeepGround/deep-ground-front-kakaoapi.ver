@@ -2,7 +2,7 @@ import { api, ApiError } from '../api-client';
 import type { File } from 'buffer'; // File 타입이 필요할 경우(환경에 따라 조정)
 import { auth } from '@/lib/auth';
 
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1`;
 
 // ====== Feed DTO ======
 export interface FeedCreateRequest {

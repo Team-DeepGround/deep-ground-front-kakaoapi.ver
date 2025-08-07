@@ -32,7 +32,7 @@ export default function RegisterPage() {
   }
 
   // 환경변수에서 API BASE URL을 가져옵니다.
-  const API_BASE = `${process.env.NEXT_PUBLIC_API_BASE_URL}/${process.env.NEXT_PUBLIC_API_VERSION}/auth`
+  const API_BASE = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/auth`
 
   // 이메일 중복 확인
   const checkEmailAvailability = async () => {

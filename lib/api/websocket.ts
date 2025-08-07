@@ -5,9 +5,9 @@ import { ChatMessage, InitChatRoomResponse } from '@/types/chat';
 // WebSocket 클라이언트 생성
 export const createStompClient = async (onConnect: () => void, onError: (error: any) => void, onClose: () => void): Promise<Client> => {
   // 환경변수에서 WebSocket 주소 조합 (http → ws, https → wss)
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api';
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
   const apiVersion = process.env.NEXT_PUBLIC_API_VERSION || 'v1';
-  const wsUrl = `${apiBase.replace(/^http/, 'ws')}/${apiVersion}/ws`;
+  const wsUrl = `${apiBase.replace(/^http/, 'ws')}/api/${apiVersion}/ws`;
   const token = await auth.getToken();
 
   const client = new Client({
