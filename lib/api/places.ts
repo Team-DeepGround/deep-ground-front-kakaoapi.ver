@@ -13,6 +13,29 @@ export interface CafeData {
   description?: string
 }
 
+export interface ReviewData {
+  communityPlaceReviewId: number
+  scope: number
+  content: string
+  mediaUrl: string[]
+}
+
+export interface ReviewListResponse {
+  success: boolean
+  data?: {
+    reviews: ReviewData[]
+    totalPages: number
+  }
+  message: string
+  code?: string
+  result?: {
+    reviews: ReviewData[]
+    totalPages: number
+  }
+  reviews?: ReviewData[]
+  totalPages?: number
+}
+
 export interface CafeListResponse {
   success: boolean
   data: CafeData[]
@@ -47,7 +70,7 @@ export async function getCafeList(specificAddressId: string, params: CafeListPar
   if (params.minRating) searchParams.append('minRating', params.minRating.toString())
   if (params.maxRating) searchParams.append('maxRating', params.maxRating.toString())
 
-  return apiClient(`/community-place/${specificAddressId}?${searchParams.toString()}`)
+  return apiClient(`/communityPlace/${specificAddressId}?${searchParams.toString()}`)
 }
 
 // 특정 카페 조회
@@ -76,4 +99,13 @@ export async function deleteCafe(id: number): Promise<{ success: boolean; messag
   return apiClient(`/places/cafes/${id}`, {
     method: 'DELETE'
   })
+} 
+
+// 카페 리뷰 조회
+export async function getCafeReviews(specificAddressId: number, page: number = 0, size: number = 5): Promise<ReviewListResponse> {
+  const searchParams = new URLSearchParams()
+  searchParams.append('page', page.toString())
+  searchParams.append('size', size.toString())
+  
+  return apiClient(`/communityPlace/reviews/${specificAddressId}?${searchParams.toString()}`)
 } 

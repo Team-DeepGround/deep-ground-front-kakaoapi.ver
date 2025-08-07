@@ -1,6 +1,11 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react"
+import { getCafeReviews, ReviewData } from '@/lib/api/places'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Star, MessageCircle, Image as ImageIcon } from 'lucide-react'
 
 interface PlaceMapProps {
   mapRef: React.RefObject<HTMLDivElement | null>
@@ -17,11 +22,15 @@ interface CafeData {
   phone?: string
   hours?: string
   description?: string
-  id?: number
+  id: number
   placeUrl?: string
 }
 
-export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
+export interface PlaceMapRef {
+  handleReviewClick: (cafe: CafeData) => void
+}
+
+export const PlaceMap = forwardRef<PlaceMapRef, PlaceMapProps>(({ mapRef, mapInstance, onCafeSelect }, ref) => {
   // 1. 상태 초기화 - any 타입 사용 (kakao 네임스페이스 접근 불가)
   // const [mapInstance, setMapInstance] = useState<any>(null) // REMOVED - now passed as prop
   const selectedMarkerRef = useRef<any>(null)
@@ -37,6 +46,14 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isCentering, setIsCentering] = useState(false)
+  
+  // 리뷰 관련 상태
+  const [reviews, setReviews] = useState<ReviewData[]>([])
+  const [showReviews, setShowReviews] = useState(false)
+  const [selectedCafeForReviews, setSelectedCafeForReviews] = useState<CafeData | null>(null)
+  const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [currentReviewPage, setCurrentReviewPage] = useState(0)
+  const [totalReviewPages, setTotalReviewPages] = useState(0)
 
   // 정렬된 리스트 (visibleCafes만)
   const sortedCafeList = [...visibleCafes].sort((a, b) => {
@@ -118,7 +135,7 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
         phone: cafe.phone || '',
         hours: cafe.hours || '',
         description: cafe.description || '',
-        id: cafe.id || `cafe-${index}`, // 고유 ID 보장
+        id: cafe.id || index + 1, // 숫자 ID로 변경
         placeUrl: cafe.placeUrl || ''
       }))
 
@@ -247,90 +264,132 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
 
   // 커스텀 오버레이 생성 함수
   const createCustomOverlay = (cafe: CafeData) => {
-    const content = `
+    // DOM 요소 직접 생성
+    const overlayDiv = document.createElement('div')
+    overlayDiv.style.cssText = `
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      border: 1px solid #e0e0e0;
+      min-width: 200px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `
+    
+    overlayDiv.innerHTML = `
       <div style="
-        background: white;
-        border-radius: 8px;
-        padding: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        border: 1px solid #e0e0e0;
-        min-width: 200px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 16px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+      ">
+        ${cafe.name}
+      </div>
+      <div style="
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
       ">
         <div style="
-          font-size: 16px;
+          font-size: 14px;
+          color: #FFD600;
+          margin-right: 8px;
+        ">
+          ${createStarRating(cafe.rating)}
+        </div>
+        <div style="
+          font-size: 14px;
+          color: #4A90E2;
           font-weight: bold;
-          color: #333;
-          margin-bottom: 8px;
         ">
-          ${cafe.name}
-        </div>
-        <div style="
-          display: flex;
-          align-items: center;
-          margin-bottom: 8px;
-        ">
-          <div style="
-            font-size: 14px;
-            color: #FFD600;
-            margin-right: 8px;
-          ">
-            ${createStarRating(cafe.rating)}
-          </div>
-          <div style="
-            font-size: 14px;
-            color: #4A90E2;
-            font-weight: bold;
-          ">
-            ${cafe.rating}/5.0
-          </div>
-        </div>
-        <div style="
-          font-size: 12px;
-          color: #666;
-          margin-bottom: 8px;
-        ">
-          리뷰 ${cafe.reviewCount}개
-        </div>
-        <div style="
-          display: flex;
-          gap: 8px;
-          margin-top: 12px;
-        ">
-          <button style="
-            background: #4A90E2;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 6px 12px;
-            font-size: 12px;
-            cursor: pointer;
-            font-weight: bold;
-          " onclick="${cafe.placeUrl ? `window.open('${cafe.placeUrl}', '_blank')` : 'alert(\'해당 매장의 상세 정보가 없습니다.\')'}">
-            상세보기
-          </button>
-          <button style="
-            background: #FFD600;
-            color: #333;
-            border: none;
-            border-radius: 4px;
-            padding: 6px 12px;
-            font-size: 12px;
-            cursor: pointer;
-            font-weight: bold;
-          ">
-            리뷰보기
-          </button>
+          ${cafe.rating}/5.0
         </div>
       </div>
+      <div style="
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 8px;
+      ">
+        리뷰 ${cafe.reviewCount}개
+      </div>
+      <div style="
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      ">
+        <button class="detail-btn" onmousedown="event.preventDefault(); event.stopPropagation(); console.log('상세보기 클릭'); if('${cafe.placeUrl}') { window.open('${cafe.placeUrl}', '_blank'); } else { alert('해당 매장의 상세 정보가 없습니다.'); }" style="
+          background: #4A90E2;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 6px 12px;
+          font-size: 12px;
+          cursor: pointer;
+          font-weight: bold;
+        ">
+          상세보기
+        </button>
+        <button class="review-btn" onmousedown="event.preventDefault(); event.stopPropagation(); console.log('리뷰보기 클릭'); window.handleReviewClick && window.handleReviewClick('${cafe.name}')" style="
+          background: #FFD600;
+          color: #333;
+          border: none;
+          border-radius: 4px;
+          padding: 6px 12px;
+          font-size: 12px;
+          cursor: pointer;
+          font-weight: bold;
+        ">
+          리뷰보기
+        </button>
+      </div>
     `
-         return new window.kakao.maps.CustomOverlay({
-       content: content,
-       position: cafe.position,
-       xAnchor: 0.5,
-       yAnchor: 0,
-       zIndex: 1001 // 마커보다 높은 z-index
-     })
+    
+    // 버튼 이벤트 리스너를 즉시 추가
+    const detailBtn = overlayDiv.querySelector('.detail-btn') as HTMLButtonElement
+    const reviewBtn = overlayDiv.querySelector('.review-btn') as HTMLButtonElement
+    
+    console.log('🔍 오버레이 생성 - 버튼 찾기:', { 
+      detailBtn: !!detailBtn, 
+      reviewBtn: !!reviewBtn,
+      cafeName: cafe.name 
+    })
+    
+    if (detailBtn) {
+      // mousedown 이벤트 사용 (카카오맵과 충돌 방지)
+      detailBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        console.log('✅ 상세보기 클릭됨:', cafe.name)
+        if (cafe.placeUrl) {
+          window.open(cafe.placeUrl, '_blank')
+        } else {
+          alert('해당 매장의 상세 정보가 없습니다.')
+        }
+      })
+      console.log('✅ 상세보기 버튼 이벤트 리스너 추가됨')
+    }
+    
+    if (reviewBtn) {
+      // mousedown 이벤트 사용 (카카오맵과 충돌 방지)
+      reviewBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        console.log('✅ 리뷰보기 클릭됨:', cafe.name)
+        handleReviewClick(cafe)
+      })
+      console.log('✅ 리뷰보기 버튼 이벤트 리스너 추가됨')
+    }
+    
+    // 오버레이 생성
+    const overlay = new window.kakao.maps.CustomOverlay({
+      content: overlayDiv,
+      position: cafe.position,
+      xAnchor: 0.5,
+      yAnchor: 0,
+      zIndex: 1001
+    })
+    
+    return overlay
   }
 
      // 마커를 생성하고 지도 위에 표시하는 함수
@@ -424,6 +483,20 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
        if (content && content.addEventListener) {
          content.addEventListener('click', () => {
            console.log('🎯 마커 클릭됨:', cafe.name);
+           
+           // 이전 오버레이 숨기기
+           if (overlayRef.current) {
+             overlayRef.current.setMap(null);
+             console.log('🗑️ 이전 오버레이 숨김');
+           }
+           
+           // 새로운 오버레이 생성 및 표시 (버튼 이벤트 리스너가 포함된)
+           const newOverlay = createCustomOverlay(cafe);
+           newOverlay.setMap(map);
+           overlayRef.current = newOverlay;
+           selectedMarkerRef.current = { cafeData: cafe, overlay: newOverlay };
+           console.log('✅ 새로운 오버레이 생성 및 표시됨:', cafe.name);
+           
            setSelectedCafe(cafe);
            if (onCafeSelect) {
              onCafeSelect(cafe);
@@ -487,51 +560,46 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
     console.log('🗺️ 지도 중심:', actualMapInstance.getCenter())
     console.log('🗺️ 지도 줌 레벨:', actualMapInstance.getLevel())
 
-    // 전역 클릭 핸들러 함수 추가
+    // 전역 리뷰 클릭 핸들러 함수 추가 (먼저 정의)
+    ;(window as any).handleReviewClick = function(cafeName: string) {
+      console.log('🔍 리뷰보기 클릭:', cafeName)
+      
+      // 해당 카페 데이터 찾기
+      const cafe = cafeList.find(c => c.name === cafeName)
+      if (!cafe) {
+        console.warn('카페를 찾을 수 없습니다:', cafeName)
+        return
+      }
+      
+      // 리뷰 조회 실행
+      handleReviewClick(cafe)
+    }
+
+    // 전역 클릭 핸들러 함수 추가 (오른쪽 패널에서 호출될 때 사용)
     ;(window as any).handleMarkerClick = function(cafeName: string) {
-      console.log('마커 클릭:', cafeName)
+      console.log('마커 클릭 (패널에서):', cafeName)
       
       // 해당 카페 데이터 찾기
       const cafe = cafeList.find(c => c.name === cafeName)
       if (!cafe) return
       
-      // 마커와 오버레이 매핑을 위한 임시 저장
-      const markerOverlayMap = new Map()
-      
-      // 모든 마커에 대해 오버레이 생성 및 매핑
-      cafeList.forEach((cafeData: CafeData, index: number) => {
-        const overlay = createCustomOverlay(cafeData)
-        overlay.setMap(null)
-        markerOverlayMap.set(cafeData.name, overlay)
-      })
-      
-      // 이전 선택된 오버레이 숨기기
-      if (selectedMarkerRef.current) {
-        const prevOverlay = markerOverlayMap.get(selectedMarkerRef.current.cafeData?.name)
-        if (prevOverlay) {
-          prevOverlay.setMap(null)
-        }
-      }
-      
-      // 현재 마커가 이미 선택된 상태라면 선택 해제
-      if (selectedMarkerRef.current && selectedMarkerRef.current.cafeData?.name === cafeName) {
-        selectedMarkerRef.current = null
+      // 기존 오버레이 숨기기
+      if (overlayRef.current) {
+        overlayRef.current.setMap(null)
         overlayRef.current = null
-      } else {
-        // 현재 마커를 선택 상태로 변경
-        const currentOverlay = markerOverlayMap.get(cafeName)
-        if (currentOverlay) {
-          currentOverlay.setMap(actualMapInstance)
-          selectedMarkerRef.current = { cafeData: cafe }
-          overlayRef.current = currentOverlay
-        }
       }
+      
+      // 새로운 오버레이 생성 및 표시
+      const newOverlay = createCustomOverlay(cafe)
+      newOverlay.setMap(actualMapInstance)
+      overlayRef.current = newOverlay
+      selectedMarkerRef.current = { cafeData: cafe, overlay: newOverlay }
 
       // 마커 클릭 시 카페 선택 콜백 호출
       if (onCafeSelect) {
         onCafeSelect(cafe)
       }
-      setSelectedCafe(cafeList.find(cafe => cafe.name === cafeName) || null)
+      setSelectedCafe(cafe)
     }
 
     // 기존 클릭 이벤트 리스너 제거
@@ -543,20 +611,30 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
 
     // 지도 클릭 시 선택된 마커 초기화
     try {
-      window.kakao.maps.event.addListener(actualMapInstance, 'click', function() {
+      window.kakao.maps.event.addListener(actualMapInstance, 'click', function(e: any) {
+        // 클릭된 요소가 오버레이 내부인지 확인
+        const target = e.originalEvent?.target
+        if (target && (target.closest('button') || target.closest('[style*="background: white"]'))) {
+          return // 오버레이 내부 클릭은 무시
+        }
+        
+        // 선택된 마커 초기화
         if (selectedMarkerRef.current) {
-          const marker = selectedMarkerRef.current
           const overlay = selectedMarkerRef.current.overlay
-          
           if (overlay && overlay.setMap) {
             overlay.setMap(null)
           }
           selectedMarkerRef.current = null
         }
+        
+        // 오버레이 참조 초기화
         if (overlayRef.current) {
           overlayRef.current.setMap(null)
           overlayRef.current = null
         }
+        
+        // 선택된 카페 상태 초기화
+        setSelectedCafe(null)
       })
     } catch (error) {
       console.warn('⚠️ 지도 클릭 이벤트 리스너 추가 중 오류:', error);
@@ -589,6 +667,74 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
     }
     
     console.log('✅ SDK와 mapInstance가 준비됨 - API 호출 시작')
+    
+    // 전역 함수 미리 정의
+    ;(window as any).handleMarkerClick = function(cafeName: string) {
+      console.log('마커 클릭 (패널에서):', cafeName)
+      
+      // 해당 카페 데이터 찾기
+      const cafe = cafeList.find(c => c.name === cafeName)
+      if (!cafe) return
+      
+      // 기존 오버레이 숨기기
+      if (overlayRef.current) {
+        overlayRef.current.setMap(null)
+        overlayRef.current = null
+      }
+      
+      // 새로운 오버레이 생성 및 표시
+      const newOverlay = createCustomOverlay(cafe)
+      if (mapInstance?.current) {
+        newOverlay.setMap(mapInstance.current)
+        overlayRef.current = newOverlay
+        selectedMarkerRef.current = { cafeData: cafe, overlay: newOverlay }
+
+        // 마커 클릭 시 카페 선택 콜백 호출
+        if (onCafeSelect) {
+          onCafeSelect(cafe)
+        }
+        setSelectedCafe(cafe)
+      }
+    }
+    
+    ;(window as any).handleDetailClick = function(cafeName: string) {
+      console.log('🔍 상세보기 클릭 (전역):', cafeName)
+      
+      // 해당 카페 데이터 찾기
+      const cafe = cafeList.find(c => c.name === cafeName)
+      if (!cafe) {
+        console.warn('❌ 카페를 찾을 수 없습니다:', cafeName)
+        return
+      }
+      
+      console.log('✅ 상세보기 실행:', cafe.name)
+      if (cafe.placeUrl) {
+        window.open(cafe.placeUrl, '_blank')
+      } else {
+        alert('해당 매장의 상세 정보가 없습니다.')
+      }
+    }
+    
+    ;(window as any).handleReviewClick = function(cafeName: string) {
+      console.log('🔍 리뷰보기 클릭 (전역):', cafeName)
+      console.log('🔍 현재 cafeList:', cafeList)
+      
+      // 해당 카페 데이터 찾기
+      const cafe = cafeList.find(c => c.name === cafeName)
+      if (!cafe) {
+        console.warn('❌ 카페를 찾을 수 없습니다:', cafeName)
+        console.warn('❌ 사용 가능한 카페들:', cafeList.map(c => c.name))
+        return
+      }
+      
+      console.log('✅ 카페 찾음:', cafe)
+      
+      // 리뷰 조회 실행
+      handleReviewClick(cafe)
+    }
+    
+    console.log('✅ 마운트 시점 전역 함수 정의 완료')
+    
     fetchCafeData()
   }, [mapInstance]) // mapInstance 의존성만 유지
 
@@ -745,6 +891,141 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
     
   }, [cafeList]) // mapInstance 의존성 제거
 
+  // 리뷰 조회 함수
+  const handleReviewClick = async (cafe: CafeData) => {
+    console.log('🔍 리뷰 조회 시작:', cafe)
+    
+    if (!cafe.id) {
+      console.warn('❌ 카페 ID가 없습니다:', cafe)
+      return
+    }
+    
+    setSelectedCafeForReviews(cafe)
+    setReviewsLoading(true)
+    setCurrentReviewPage(0)
+    
+    try {
+      console.log('🌐 API 호출 - 카페 ID:', cafe.id)
+      const response = await getCafeReviews(cafe.id, 0, 5)
+      console.log('📡 API 응답:', response)
+      
+      // 백엔드 응답 구조에 따라 데이터 추출
+      let reviews: ReviewData[] = []
+      let totalPages = 0
+      
+      console.log('🔍 응답 구조 분석:', response)
+      console.log('🔍 response.data 타입:', typeof response.data)
+      console.log('🔍 response.data 내용:', response.data)
+      
+      // success 필드가 없거나 true인 경우 처리
+      if (response.success !== false) {
+        if (response.data && response.data.reviews) {
+          // 표준 응답 구조
+          reviews = response.data.reviews
+          totalPages = response.data.totalPages
+          console.log('📊 표준 구조에서 데이터 추출')
+        } else if (response.result && response.result.reviews) {
+          // 백엔드 SuccessResponse 구조
+          reviews = response.result.reviews
+          totalPages = response.result.totalPages
+          console.log('📊 SuccessResponse 구조에서 데이터 추출')
+        } else if (response.data && Array.isArray(response.data)) {
+          // 직접 배열로 응답하는 경우
+          reviews = response.data
+          totalPages = 1
+          console.log('📊 배열 구조에서 데이터 추출')
+        } else if (response.data && response.data.reviews) {
+          // ReviewListResponseDto 직접 반환 구조
+          reviews = response.data.reviews
+          totalPages = response.data.totalPages
+          console.log('📊 ReviewListResponseDto 직접 반환 구조에서 데이터 추출')
+        } else if (response.reviews) {
+          // 최상위에 reviews가 있는 경우
+          reviews = response.reviews
+          totalPages = response.totalPages || 1
+          console.log('📊 최상위 reviews 구조에서 데이터 추출')
+        }
+        
+        console.log('✅ 리뷰 조회 성공:', { reviews, totalPages })
+        setReviews(reviews)
+        setTotalReviewPages(totalPages)
+      } else {
+        console.error('❌ 리뷰 조회 실패:', response.message)
+        setReviews([])
+        setTotalReviewPages(0)
+      }
+    } catch (error) {
+      console.error('❌ 리뷰 조회 중 오류:', error)
+      setReviews([])
+      setTotalReviewPages(0)
+    } finally {
+      setReviewsLoading(false)
+    }
+  }
+
+  // 리뷰 페이지 변경 함수
+  const handleReviewPageChange = async (page: number) => {
+    if (!selectedCafeForReviews?.id) return
+    
+    setReviewsLoading(true)
+    setCurrentReviewPage(page)
+    
+    try {
+      const response = await getCafeReviews(selectedCafeForReviews.id, page, 5)
+      
+      // 백엔드 응답 구조에 따라 데이터 추출
+      let reviews: ReviewData[] = []
+      let totalPages = 0
+      
+      // success 필드가 없거나 true인 경우 처리
+      if (response.success !== false) {
+        if (response.data && response.data.reviews) {
+          // 표준 응답 구조
+          reviews = response.data.reviews
+          totalPages = response.data.totalPages
+        } else if (response.result && response.result.reviews) {
+          // 백엔드 SuccessResponse 구조
+          reviews = response.result.reviews
+          totalPages = response.result.totalPages
+        } else if (response.data && Array.isArray(response.data)) {
+          // 직접 배열로 응답하는 경우
+          reviews = response.data
+          totalPages = 1
+        } else if (response.data && response.data.reviews) {
+          // ReviewListResponseDto 직접 반환 구조
+          reviews = response.data.reviews
+          totalPages = response.data.totalPages
+        } else if (response.reviews) {
+          // 최상위에 reviews가 있는 경우
+          reviews = response.reviews
+          totalPages = response.totalPages || 1
+        }
+        
+        setReviews(reviews)
+        setTotalReviewPages(totalPages)
+      }
+    } catch (error) {
+      console.error('리뷰 페이지 변경 중 오류:', error)
+    } finally {
+      setReviewsLoading(false)
+    }
+  }
+
+  // 카페 리스트로 돌아가기
+  const handleBackToCafeList = () => {
+    setSelectedCafeForReviews(null)
+    setReviews([])
+    setCurrentReviewPage(0)
+    setTotalReviewPages(0)
+  }
+
+  // 외부에서 호출할 수 있도록 리뷰 기능 노출
+  useImperativeHandle(ref, () => ({
+    handleReviewClick: (cafe: CafeData) => {
+      handleReviewClick(cafe)
+    }
+  }))
+
   // 리스트에서 카페 클릭 시 마커 오버레이 표시만
   const handleListCafeClick = (cafe: CafeData) => {
     // 마커 오버레이 표시
@@ -799,6 +1080,9 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
       if ((window as any).handleMarkerClick) {
         delete (window as any).handleMarkerClick;
       }
+      if ((window as any).handleReviewClick) {
+        delete (window as any).handleReviewClick;
+      }
       
       console.log('🧹 PlaceMap 컴포넌트 정리 완료')
     };
@@ -813,63 +1097,176 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
     )
   }
 
-return (
-  <div className="w-80 bg-white rounded shadow p-4 h-[70vh] overflow-y-auto mt-16">
-             <div className="flex gap-2 mb-4">
-         <button
-                       className={`px-3 py-1 rounded ${sortType === 'rating' ? 'bg-blue-500 text-white' : 'bg-gray-200'} ${isCentering ? 'opacity-50 cursor-not-allowed' : ''}`}
-            onClick={() => {
-              if (!isCentering) {
-                setSortType('rating')
-                fetchCafeData('rating') // 별점순으로 데이터 다시 로드
-              }
-            }}
-            disabled={isCentering}
-         >
-           {isCentering ? '지도 이동 중...' : '별점순'}
-         </button>
-         <button
-                       className={`px-3 py-1 rounded ${sortType === 'reviewCount' ? 'bg-blue-500 text-white' : 'bg-gray-200'} ${isCentering ? 'opacity-50 cursor-not-allowed' : ''}`}
-            onClick={() => {
-              if (!isCentering) {
-                setSortType('reviewCount')
-                fetchCafeData('reviewCount') // 리뷰순으로 데이터 다시 로드
-              }
-            }}
-            disabled={isCentering}
-         >
-           {isCentering ? '지도 이동 중...' : '리뷰순'}
-         </button>
-       </div>
-      {error ? (
-        <div className="text-center text-red-500 mt-8">
-          <div className="text-lg mb-2">카페 데이터 로딩 실패</div>
-          <div className="text-sm">{error}</div>
-        </div>
-      ) : sortedCafeList.length === 0 ? (
-        <div className="text-center text-gray-500 mt-8">
-          표시할 카페가 없습니다.
+  return (
+    <div className="w-80 bg-white rounded-lg shadow-lg p-4 h-[70vh] overflow-y-auto">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-4">
+        {selectedCafeForReviews ? (
+          <>
+            <h3 className="font-bold text-lg">{selectedCafeForReviews.name} 리뷰</h3>
+            <button
+              onClick={handleBackToCafeList}
+              className="text-blue-500 hover:text-blue-700 text-sm"
+            >
+              ← 카페 목록
+            </button>
+          </>
+        ) : (
+          <>
+            <h3 className="font-bold text-lg">카페 목록</h3>
+            <div className="flex gap-2">
+              <button
+                className={`px-3 py-1 rounded ${sortType === 'rating' ? 'bg-blue-500 text-white' : 'bg-gray-200'} ${isCentering ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => {
+                  if (!isCentering) {
+                    setSortType('rating')
+                    fetchCafeData('rating')
+                  }
+                }}
+                disabled={isCentering}
+              >
+                {isCentering ? '지도 이동 중...' : '별점순'}
+              </button>
+              <button
+                className={`px-3 py-1 rounded ${sortType === 'reviewCount' ? 'bg-blue-500 text-white' : 'bg-gray-200'} ${isCentering ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => {
+                  if (!isCentering) {
+                    setSortType('reviewCount')
+                    fetchCafeData('reviewCount')
+                  }
+                }}
+                disabled={isCentering}
+              >
+                {isCentering ? '지도 이동 중...' : '리뷰순'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 카페 리스트 또는 리뷰 리스트 */}
+      {selectedCafeForReviews ? (
+        // 리뷰 리스트
+        <div className="space-y-4">
+          {reviewsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : reviews.length > 0 ? (
+            <>
+              <div className="space-y-4">
+                {reviews.map((review, index) => (
+                  <div key={review.communityPlaceReviewId} className="border rounded-lg p-4 space-y-3">
+                    {/* 별점 */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < review.scope ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <Badge variant="secondary">{review.scope}/5.0</Badge>
+                    </div>
+                    
+                    {/* 리뷰 내용 */}
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {review.content}
+                    </p>
+                    
+                    {/* 이미지 */}
+                    {review.mediaUrl && review.mediaUrl.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto">
+                        {review.mediaUrl.map((url, imgIndex) => (
+                          <div key={imgIndex} className="flex-shrink-0">
+                            <img
+                              src={url}
+                              alt={`리뷰 이미지 ${imgIndex + 1}`}
+                              className="w-20 h-20 object-cover rounded-md"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              {/* 페이지네이션 */}
+              {totalReviewPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleReviewPageChange(currentReviewPage - 1)}
+                    disabled={currentReviewPage === 0}
+                  >
+                    이전
+                  </Button>
+                  
+                  <span className="text-sm text-gray-600">
+                    {currentReviewPage + 1} / {totalReviewPages}
+                  </span>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleReviewPageChange(currentReviewPage + 1)}
+                    disabled={currentReviewPage >= totalReviewPages - 1}
+                  >
+                    다음
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>아직 리뷰가 없습니다.</p>
+            </div>
+          )}
         </div>
       ) : (
-        <ul>
-          {sortedCafeList.map((cafe, index) => (
-            <li
-              key={cafe.id || `${cafe.name}-${index}`}
-              className={`mb-4 p-2 rounded cursor-pointer border ${
-                selectedCafe?.name === cafe.name ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:bg-gray-50'
-              }`}
-              onClick={() => handleListCafeClick(cafe)}
-            >
-              <div className="font-bold text-lg">{cafe.name}</div>
-              <div className="flex items-center gap-2 text-sm">
-                <span>⭐ {cafe.rating}</span>
-                <span className="text-gray-400">/ 리뷰 {cafe.reviewCount}개</span>
-              </div>
-              <div className="text-xs text-gray-500">{cafe.address}</div>
-            </li>
-          ))}
-        </ul>
+        // 카페 리스트
+        <div>
+          {error ? (
+            <div className="text-center text-red-500 mt-8">
+              <div className="text-lg mb-2">카페 데이터 로딩 실패</div>
+              <div className="text-sm">{error}</div>
+            </div>
+          ) : sortedCafeList.length === 0 ? (
+            <div className="text-center text-gray-500 mt-8">
+              표시할 카페가 없습니다.
+            </div>
+          ) : (
+            <ul>
+              {sortedCafeList.map((cafe, index) => (
+                <li
+                  key={cafe.id || `${cafe.name}-${index}`}
+                  className={`mb-4 p-3 rounded border cursor-pointer ${
+                    selectedCafe?.name === cafe.name ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:bg-gray-50'
+                  }`}
+                  onClick={() => handleListCafeClick(cafe)}
+                >
+                  <div className="font-bold text-lg">{cafe.name}</div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span>⭐ {cafe.rating}</span>
+                    <span className="text-gray-400">/ 리뷰 {cafe.reviewCount}개</span>
+                  </div>
+                  <div className="text-xs text-gray-500">{cafe.address}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   )
-}
+})

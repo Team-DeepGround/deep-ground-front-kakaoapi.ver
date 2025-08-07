@@ -4,9 +4,10 @@ import React, { useRef, useState } from "react"
 import { usePlaceMap } from "@/hooks/useKakaoMap"
 import { usePlacePageSearch } from "@/hooks/usePlaceSearch"
 import { PlacePageSearchInput } from "@/app/components/place/SearchInput"
-import { PlaceMap } from "@/app/components/place/PlaceMap"
+import { PlaceMap, PlaceMapRef } from "@/app/components/place/PlaceMap"
 
 interface CafeInfo {
+  id?: number
   name: string
   rating: number
   reviewCount: number
@@ -19,6 +20,7 @@ interface CafeInfo {
 
 export default function PlacePage() {
   const mapRef = useRef<HTMLDivElement | null>(null)
+  const placeMapRef = useRef<PlaceMapRef>(null)
   const { mapInstance, isMapReady, isLoading: isMapLoading, selectedCafe, selectCafe, searchNearbyPlaces } = usePlaceMap(mapRef)
   const {
     searchInput,
@@ -38,6 +40,25 @@ export default function PlacePage() {
 
   const handleCafeSelect = (cafe: CafeInfo) => {
     selectCafe(cafe)
+  }
+
+  const handleReviewClick = () => {
+    if (selectedCafe && placeMapRef.current) {
+      // CafeInfo를 CafeData 형태로 변환
+      const cafeData = {
+        position: null, // 지도에서 선택된 카페이므로 position은 필요없음
+        name: selectedCafe.name,
+        rating: selectedCafe.rating,
+        reviewCount: selectedCafe.reviewCount,
+        address: selectedCafe.address,
+        phone: selectedCafe.phone,
+        hours: selectedCafe.hours,
+        description: selectedCafe.description,
+        placeUrl: selectedCafe.placeUrl,
+        id: selectedCafe.id || 0 // 실제 ID 사용, 없으면 0
+      }
+      placeMapRef.current.handleReviewClick(cafeData)
+    }
   }
 
   // 별점순으로 모임장소 조회 (API에서 자동으로 처리됨)
@@ -86,6 +107,7 @@ export default function PlacePage() {
           mapRef={mapRef} 
           mapInstance={mapInstance}
           onCafeSelect={handleCafeSelect}
+          ref={placeMapRef}
         />
         
         {/* 오른쪽: 상세 정보 패널 */}
@@ -139,7 +161,7 @@ export default function PlacePage() {
                   >
                     상세보기
                   </button>
-                  <button className="bg-yellow-400 text-gray-800 px-4 py-2 rounded text-sm font-semibold hover:bg-yellow-500 transition-colors">
+                  <button className="bg-yellow-400 text-gray-800 px-4 py-2 rounded text-sm font-semibold hover:bg-yellow-500 transition-colors" onClick={handleReviewClick}>
                     리뷰보기
                   </button>
                 </div>
