@@ -64,10 +64,12 @@ export const StudyCard = memo(function StudyCard({ study }: StudyCardProps) {
         <CardContent className="p-4 pt-0">
           <p className="text-sm text-muted-foreground line-clamp-2 h-10">{study.description}</p>
           
-          {!study.isOnline && study.addresses?.[0]?.dong && (
+          {!study.isOnline && study.addresses?.length > 0 && (
             <p className="text-sm text-muted-foreground mt-2 flex items-center">
               <MapPin className="h-3.5 w-3.5 mr-1 flex-shrink-0 group-hover:text-primary transition-colors" />
-              <span className="truncate">{study.addresses[0].dong}</span>
+              <span className="truncate">
+                {study.addresses.map(a => a.dong).join(", ")}
+              </span>
             </p>
           )}
 
