@@ -8,6 +8,7 @@ declare global {
   }
 }
 
+// 기본 장소 검색 훅 (공통 기능)
 export function usePlaceSearch(
   mapInstance: React.MutableRefObject<any>,
   isMapReady: boolean,
@@ -739,5 +740,67 @@ export function usePlaceSearch(
     handleSuggestionClick,
     handleKeyDown,
     handleUnifiedSearch,
+  }
+}
+
+// 스터디 일정 추가용 간단한 검색 훅
+export function useSchedulePlaceSearch(
+  mapInstance: React.MutableRefObject<any>,
+  isMapReady: boolean,
+  isMapLoading: boolean
+) {
+  const baseSearch = usePlaceSearch(mapInstance, isMapReady, isMapLoading)
+  
+  // 스터디 일정 추가에 필요한 추가 기능들
+  const [selectedSchedulePlace, setSelectedSchedulePlace] = useState<any>(null)
+  
+  // 장소 선택 시 단순화된 처리
+  const handleSchedulePlaceSelect = (place: any) => {
+    setSelectedSchedulePlace(place)
+    // 지도 중심 이동
+    if (mapInstance.current && place) {
+      mapInstance.current.setCenter(
+        new window.kakao.maps.LatLng(place.y, place.x)
+      )
+    }
+  }
+  
+  return {
+    ...baseSearch,
+    selectedSchedulePlace,
+    handleSchedulePlaceSelect,
+    setSelectedSchedulePlace
+  }
+}
+
+// 모임장소 페이지용 고급 검색 훅
+export function usePlacePageSearch(
+  mapInstance: React.MutableRefObject<any>,
+  isMapReady: boolean,
+  isMapLoading: boolean
+) {
+  const baseSearch = usePlaceSearch(mapInstance, isMapReady, isMapLoading)
+  
+  // 모임장소 페이지에 필요한 추가 기능들
+  const [cafeList, setCafeList] = useState<any[]>([])
+  const [selectedCafe, setSelectedCafe] = useState<any>(null)
+  
+  // 카페 목록 검색 및 필터링
+  const searchCafes = async (keyword: string, filters?: any) => {
+    // 카페 전용 검색 로직
+    // 별점순 정렬, 리뷰 수 필터링 등
+  }
+  
+  // 카페 선택 시 상세 정보 표시
+  const selectCafe = (cafe: any) => {
+    setSelectedCafe(cafe)
+  }
+  
+  return {
+    ...baseSearch,
+    cafeList,
+    selectedCafe,
+    searchCafes,
+    selectCafe
   }
 } 

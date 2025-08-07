@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useRef, useState } from "react"
-import { useKakaoMap } from "@/hooks/useKakaoMap"
-import { usePlaceSearch } from "@/hooks/usePlaceSearch"
-import { SearchInput } from "@/app/components/place/SearchInput"
+import { usePlaceMap } from "@/hooks/useKakaoMap"
+import { usePlacePageSearch } from "@/hooks/usePlaceSearch"
+import { PlacePageSearchInput } from "@/app/components/place/SearchInput"
 import { PlaceMap } from "@/app/components/place/PlaceMap"
 
 interface CafeInfo {
@@ -19,8 +19,7 @@ interface CafeInfo {
 
 export default function PlacePage() {
   const mapRef = useRef<HTMLDivElement | null>(null)
-  const [selectedCafe, setSelectedCafe] = useState<CafeInfo | null>(null)
-  const { mapInstance, isMapReady, isLoading: isMapLoading } = useKakaoMap(mapRef)
+  const { mapInstance, isMapReady, isLoading: isMapLoading, selectedCafe, selectCafe, searchNearbyPlaces } = usePlaceMap(mapRef)
   const {
     searchInput,
     setSearchInput,
@@ -35,10 +34,10 @@ export default function PlacePage() {
     setInputError,
     handleSuggestionClick,
     handleKeyDown,
-  } = usePlaceSearch(mapInstance, isMapReady, isMapLoading)
+  } = usePlacePageSearch(mapInstance, isMapReady, isMapLoading)
 
   const handleCafeSelect = (cafe: CafeInfo) => {
-    setSelectedCafe(cafe)
+    selectCafe(cafe)
   }
 
   // 별점순으로 모임장소 조회 (API에서 자동으로 처리됨)
@@ -49,7 +48,7 @@ export default function PlacePage() {
       <div className="flex gap-6">
         {/* 왼쪽: 지도 영역 */}
         <div className="flex-1">
-          <SearchInput
+          <PlacePageSearchInput
             searchInput={searchInput}
             setSearchInput={setSearchInput}
             isMapReady={isMapReady}
@@ -65,7 +64,7 @@ export default function PlacePage() {
             handleSuggestionClick={handleSuggestionClick}
             inputError={inputError}
           />
-          {/* 지도 컨테이너 */}
+          {/* 모임장소용 고급 지도 컨테이너 */}
           <div className="w-full h-[70vh] mt-16 rounded shadow border relative">
             <div
               ref={mapRef}
