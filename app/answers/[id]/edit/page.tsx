@@ -110,7 +110,7 @@ export default function EditAnswerPage() {
       const accessToken = localStorage.getItem("auth_token");
       console.log('Access Token:', accessToken ? '존재함' : '없음')
       
-      const response = await fetch(`http://localhost:3000/api/v1/answers/${answerId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/answers/${answerId}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,

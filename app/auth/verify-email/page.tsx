@@ -35,7 +35,7 @@ export default function VerifyEmailPage() {
   const [resendDisabled, setResendDisabled] = useState(true)
   const [resendCountdown, setResendCountdown] = useState(0)
 
-  const API_BASE = "http://localhost:8080/api/v1/email"
+  const API_BASE = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/email`
 
   useEffect(() => {
     const emailParam = searchParams.get("email")

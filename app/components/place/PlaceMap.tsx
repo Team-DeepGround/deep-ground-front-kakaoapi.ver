@@ -54,8 +54,8 @@ export function PlaceMap({ mapRef, mapInstance, onCafeSelect }: PlaceMapProps) {
       // 1. 별점순/리뷰순에 따라 다른 API 호출
       const currentSortBy = sortType
       const apiUrl = currentSortBy === 'rating' 
-        ? `http://localhost:8080/api/v1/communityPlace/byReviewScope`
-        : `http://localhost:8080/api/v1/communityPlace/byReviewCount`
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/communityPlace/byReviewScope`
+        : `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/communityPlace/byReviewCount`
       
       console.log('🌐 API 호출 URL:', apiUrl)
       console.log('📊 정렬 기준:', currentSortBy)

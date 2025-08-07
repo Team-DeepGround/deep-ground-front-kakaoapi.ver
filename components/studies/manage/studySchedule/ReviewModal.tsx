@@ -124,7 +124,7 @@ export default function ReviewModal({ open, onOpenChange, schedule }: ReviewModa
       let res, response;
       let url;
       if (myReview) {
-        url = `http://localhost:8080/api/v1/communityPlace/modify/${schedule.placeId}`;
+        url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/v1/communityPlace/modify/${schedule.placeId}`;
         console.log('리뷰 수정 fetch URL:', url);
         // 수정(put)
         res = await fetch(url, {
@@ -136,7 +136,7 @@ export default function ReviewModal({ open, onOpenChange, schedule }: ReviewModa
         });
       } else {
         // 등록(post)
-        res = await fetch("http://localhost:3000/api/v1/communityPlace/reviews", {
+        res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/api/v1/communityPlace/reviews`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
