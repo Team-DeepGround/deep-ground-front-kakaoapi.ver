@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const KAKAO_REST_API_KEY = process.env.KAKAO_REST_API_KEY
+const KAKAO_REST_API_KEY = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
 const ALLOWED_ENDPOINTS = ['keyword.json', 'address.json', 'category.json']
 
 export async function GET(request: NextRequest) {
